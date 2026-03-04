@@ -161,14 +161,15 @@ const getTodayClicks = db.prepare(`
   FROM click_tracking ct
   LEFT JOIN members m ON ct.member_telegram_id = m.telegram_id
   LEFT JOIN links l ON ct.link_id = l.id
-  WHERE DATE(ct.clicked_at) = DATE('now')
+  WHERE DATE(ct.clicked_at, '+8 hours') = DATE('now', '+8 hours')
   ORDER BY ct.clicked_at DESC
 `);
 
 const getMemberClickedToday = db.prepare(`
-  SELECT DISTINCT member_telegram_id
-  FROM click_tracking
-  WHERE DATE(clicked_at) = DATE('now')
+  SELECT DISTINCT ct.member_telegram_id
+  FROM click_tracking ct
+  JOIN members m ON ct.member_telegram_id = m.telegram_id
+  WHERE DATE(ct.clicked_at, '+8 hours') = DATE('now', '+8 hours')
 `);
 
 const hasClickedLink = db.prepare(`
@@ -183,7 +184,7 @@ const getNonClickersToday = db.prepare(`
   AND m.telegram_id NOT IN (
     SELECT DISTINCT ct.member_telegram_id
     FROM click_tracking ct
-    WHERE DATE(ct.clicked_at) = DATE('now')
+    WHERE DATE(ct.clicked_at, '+8 hours') = DATE('now', '+8 hours')
   )
   ORDER BY m.first_name ASC
 `);
@@ -198,7 +199,7 @@ const getTodayBlasts = db.prepare(`
   SELECT bh.*, l.url, l.title
   FROM blast_history bh
   LEFT JOIN links l ON bh.link_id = l.id
-  WHERE bh.blast_date = DATE('now')
+  WHERE bh.blast_date = DATE('now', '+8 hours')
   ORDER BY bh.sent_at ASC
 `);
 

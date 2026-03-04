@@ -43,16 +43,7 @@ async function loadStats() {
 
     if (today.success) {
         document.getElementById('statClicks').textContent = today.data.total_clicks;
-        const rate = today.data.click_rate;
-        const rateColor = rate >= 80 ? 'success' : (rate >= 50 ? 'warning' : 'danger');
-        document.getElementById('statClickRate').innerHTML = `
-      <div class="progress-container" style="width: 120px">
-        <div class="progress-bar">
-          <div class="progress-fill ${rateColor}" style="width:${rate}%"></div>
-        </div>
-        <span class="progress-label">${rate}%</span>
-      </div>
-    `;
+        document.getElementById('statClickRate').textContent = `${today.data.click_rate}%`;
     }
 }
 
@@ -364,19 +355,17 @@ async function loadBlastHistory() {
 
     tbody.innerHTML = result.data.map(b => {
         const rate = b.link_count > 0 ? Math.round((b.clicked_count / b.link_count) * 100) : 0;
-        const rateColor = rate >= 80 ? 'success' : (rate >= 50 ? 'warning' : 'danger');
-
         return `
       <tr>
-        <td><span class="badge badge-info">${b.blast_date}</span></td>
+        <td>${b.blast_date}</td>
         <td>${b.link_count}</td>
         <td>${b.clicked_count}</td>
         <td>
-          <div class="progress-container">
-            <div class="progress-bar">
-              <div class="progress-fill ${rateColor}" style="width:${rate}%"></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden">
+              <div style="width:${rate}%;height:100%;background:var(--gradient-4);border-radius:3px"></div>
             </div>
-            <span class="progress-label">${rate}%</span>
+            <span style="font-size:13px;font-weight:600">${rate}%</span>
           </div>
         </td>
       </tr>
@@ -397,15 +386,9 @@ async function loadDailyChart() {
 
     container.innerHTML = result.data.reverse().map(d => {
         const height = Math.max((d.total_clicks / maxClicks) * 160, 4);
-        const day = d.date.split('-').slice(1).join('/'); // Format as MM/DD
         return `
       <div class="chart-bar" style="height:${height}px" title="${d.date}">
-        <div class="bar-label">${day}</div>
-        <div class="tooltip">
-          <strong>${d.date}</strong><br>
-          👆 ${d.total_clicks} clicks<br>
-          👥 ${d.unique_clickers} users
-        </div>
+        <div class="tooltip">${d.date}<br>${d.total_clicks} clicks, ${d.unique_clickers} users</div>
       </div>
     `;
     }).join('');

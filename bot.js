@@ -473,7 +473,10 @@ async function triggerBlast() {
         return '❌ No pending links to blast. Add more links!';
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    // Get today's date in Malaysia (UTC+8)
+    const now = new Date();
+    const mytDate = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    const today = mytDate.toISOString().split('T')[0];
     const members = db.getAllMembers();
 
     let message = `🎯 *CUT PRICE TIKTOK — Daily Links*\n`;
