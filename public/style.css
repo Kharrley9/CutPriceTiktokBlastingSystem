@@ -368,6 +368,47 @@ body::before {
   font-weight: 600;
 }
 
+/* ─── Progress Bar ────────────────────────────────────────────── */
+.progress-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-fill.success {
+  background: var(--gradient-4);
+}
+
+.progress-fill.warning {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+}
+
+.progress-fill.danger {
+  background: linear-gradient(135deg, #f5576c, #ff4757);
+}
+
+.progress-label {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 40px;
+}
+
 /* ─── Form ────────────────────────────────────────────────────── */
 .form-card {
   background: var(--bg-card);
@@ -649,19 +690,44 @@ body::before {
   min-width: 100%;
 }
 
+.chart-container {
+  padding-bottom: 40px;
+  /* Space for X-axis */
+}
+
+.chart-bars {
+  position: relative;
+  border-bottom: 2px solid var(--border);
+}
+
 .chart-bar {
   flex: 1;
-  min-width: 18px;
-  max-width: 40px;
-  border-radius: 4px 4px 0 0;
+  min-width: 14px;
+  max-width: 32px;
+  border-radius: 6px 6px 0 0;
   background: var(--gradient-1);
   position: relative;
-  transition: var(--transition);
+  transition: all 0.3s ease;
   cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .chart-bar:hover {
-  opacity: 0.8;
+  transform: scaleY(1.05);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.chart-bar .bar-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) rotate(-45deg);
+  transform-origin: top center;
+  font-size: 10px;
+  color: var(--text-secondary);
+  padding-top: 8px;
+  white-space: nowrap;
 }
 
 .chart-bar .tooltip {
