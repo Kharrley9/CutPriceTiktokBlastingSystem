@@ -1,0 +1,21 @@
+{
+  "name": "cut-price-system",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["telegram", "tiktok", "cut-price", "auto-blast"],
+  "author": "",
+  "license": "ISC",
+  "description": "Telegram Auto-Blast System for TikTok Cut Price Links",
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "node-cron": "^4.2.1",
+    "node-telegram-bot-api": "^0.67.0",
+    "uuid": "^13.0.0"
+  }
+}

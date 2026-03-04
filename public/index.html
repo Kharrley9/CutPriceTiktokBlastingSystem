@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CutPriceTiktok Blasting System — Dashboard</title>
+  <meta name="description" content="Link Listing Members">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- SheetJS for Excel/CSV import -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+  <!-- ── Header ──────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <img src="assets/logo.png" class="logo-icon" alt="Logo"
+          style="height: 64px; width: auto; border-radius: 8px; object-fit: contain;">
+        <div>
+          <h1>CutPriceTiktok Blasting System</h1>
+          <span class="subtitle">Link Listing Members</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-badge" id="botStatus">
+        <span class="status-dot"></span>
+        <span>System Online</span>
+      </div>
+      <button class="btn btn-accent" id="btnBlast" onclick="triggerBlast()">
+        🚀 Blast Now
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Stats Cards ──────────────────────────────────────── -->
+  <section class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">📨</div>
+      <div class="stat-info">
+        <span class="stat-value" id="statPending">0</span>
+        <span class="stat-label">Pending Links</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">👥</div>
+      <div class="stat-info">
+        <span class="stat-value" id="statMembers">0<small>/100</small></span>
+        <span class="stat-label">Members</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe)">👆</div>
+      <div class="stat-info">
+        <span class="stat-value" id="statClicks">0</span>
+        <span class="stat-label">Today Clicks</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7)">📊</div>
+      <div class="stat-info">
+        <span class="stat-value" id="statClickRate">0%</span>
+        <span class="stat-label">Click Rate</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tab Navigation ───────────────────────────────────── -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="links" onclick="switchTab('links')">
+      🔗 Links
+    </button>
+    <button class="tab-btn" data-tab="members" onclick="switchTab('members')">
+      👥 Members
+    </button>
+    <button class="tab-btn" data-tab="analytics" onclick="switchTab('analytics')">
+      📊 Analytics
+    </button>
+    <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">
+      ⚙️ Settings
+    </button>
+  </nav>
+
+  <!-- ── Tab Content ──────────────────────────────────────── -->
+  <main class="tab-content">
+
+    <!-- Links Tab -->
+    <section class="tab-panel active" id="tab-links">
+      <div class="panel-header">
+        <h2>TikTok Links</h2>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-danger" onclick="deleteAllLinks()">🗑️ Remove All</button>
+          <button class="btn btn-ghost" onclick="showImport()">📊 Import Spreadsheet</button>
+          <button class="btn btn-primary" onclick="showAddLink()">+ Add Link</button>
+        </div>
+      </div>
+
+      <!-- Import Modal -->
+      <div class="form-card hidden" id="importForm">
+        <h3>📊 Import from Spreadsheet</h3>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+          Upload an Excel (.xlsx) or CSV file. Columns required: <strong>Nama :</strong> and <strong>Link
+            CutPriceTiktok :</strong>.
+        </p>
+        <div class="form-group">
+          <label>Choose File</label>
+          <input type="file" id="importFile" class="form-input" accept=".xlsx,.xls,.csv" onchange="previewImport(this)">
+        </div>
+        <div id="importPreview" class="hidden">
+          <p style="font-size:13px;font-weight:600;margin-bottom:10px">Preview (<span id="importCount">0</span> rows
+            found):</p>
+          <div class="table-container" style="max-height:220px;overflow-y:auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Link</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="importPreviewBody"></tbody>
+            </table>
+          </div>
+          <div class="form-actions" style="margin-top:14px">
+            <button class="btn btn-primary" id="importBtn" onclick="doImport()">✅ Import All</button>
+            <button class="btn btn-ghost" onclick="hideImport()">Cancel</button>
+          </div>
+        </div>
+        <div class="form-actions" id="importCancelRow">
+          <button class="btn btn-ghost" onclick="hideImport()">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Add Link Form -->
+      <div class="form-card hidden" id="addLinkForm">
+        <h3>Add New Link</h3>
+        <div class="form-group">
+          <label>Name :</label>
+          <input type="text" id="linkTitle" placeholder="e.g. Ahmad, Siti..." class="form-input">
+        </div>
+        <div class="form-group">
+          <label>Link CutPriceTiktok :</label>
+          <input type="url" id="linkUrl" placeholder="https://..." class="form-input">
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="addLink()">Save Link</button>
+          <button class="btn btn-ghost" onclick="hideAddLink()">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Links Table -->
+      <div class="table-container">
+        <table class="data-table" id="linksTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>URL</th>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Clicks</th>
+              <th>Submitted</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="linksBody">
+            <tr>
+              <td colspan="7" class="empty-state">Loading links...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Members Tab -->
+    <section class="tab-panel" id="tab-members">
+      <div class="panel-header">
+        <h2>Group Members</h2>
+        <span class="badge" id="memberCount">0 members</span>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Username</th>
+              <th>Joined</th>
+              <th>Total Clicks</th>
+              <th>Last Click</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="membersBody">
+            <tr>
+              <td colspan="7" class="empty-state">Loading members...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Analytics Tab -->
+    <section class="tab-panel" id="tab-analytics">
+      <div class="panel-header">
+        <h2>Analytics & Reports</h2>
+      </div>
+
+      <!-- Non-Clickers Section -->
+      <div class="card">
+        <div class="card-header">
+          <h3>❌ Non-Clickers Today</h3>
+          <span class="badge badge-danger" id="nonClickerCount">0</span>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Telegram ID</th>
+                <th>Total Clicks (All Time)</th>
+              </tr>
+            </thead>
+            <tbody id="nonClickersBody">
+              <tr>
+                <td colspan="5" class="empty-state">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Blast History -->
+      <div class="card">
+        <div class="card-header">
+          <h3>📨 Blast History</h3>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Links Sent</th>
+                <th>Links Clicked</th>
+                <th>Click Rate</th>
+              </tr>
+            </thead>
+            <tbody id="blastHistoryBody">
+              <tr>
+                <td colspan="4" class="empty-state">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Daily Stats -->
+      <div class="card">
+        <div class="card-header">
+          <h3>📈 Daily Click Stats (30 Days)</h3>
+        </div>
+        <div class="chart-container" id="dailyChart">
+          <div class="chart-bars" id="chartBars"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings Tab -->
+    <section class="tab-panel" id="tab-settings">
+      <div class="panel-header">
+        <h2>System Settings</h2>
+      </div>
+
+      <div class="settings-grid">
+        <div class="card">
+          <h3>🤖 Bot Configuration</h3>
+          <div class="setting-item">
+            <span class="setting-label">Group Status</span>
+            <span class="setting-value" id="settGroupStatus">Not configured</span>
+          </div>
+          <div class="setting-item">
+            <span class="setting-label">Group ID</span>
+            <span class="setting-value mono" id="settGroupId">—</span>
+          </div>
+          <div class="setting-item">
+            <span class="setting-label">Invite Link</span>
+            <div>
+              <a href="#" class="setting-value link" id="settInviteLink" target="_blank">Not generated</a>
+              <button class="btn btn-small btn-ghost" onclick="copyInviteLink()">📋 Copy</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>⏰ Blast Settings</h3>
+          <div class="setting-item">
+            <span class="setting-label">Blast Time</span>
+            <input type="time" id="settBlastTime" class="form-input setting-input" value="09:00">
+          </div>
+          <div class="setting-item">
+            <span class="setting-label">Links Per Blast</span>
+            <input type="number" id="settLinksPerBlast" class="form-input setting-input" min="1" max="50" value="10">
+          </div>
+          <div class="setting-item">
+            <span class="setting-label">Max Members</span>
+            <input type="number" id="settMaxMembers" class="form-input setting-input" min="1" max="200" value="100">
+          </div>
+          <div class="form-actions" style="margin-top:16px">
+            <button class="btn btn-primary" onclick="saveBlastSettings()">💾 Save Settings</button>
+          </div>
+        </div>
+
+        <div class="card full-width">
+          <h3>🔗 Public URL</h3>
+          <div class="setting-item">
+            <span class="setting-label">Click Tracking URL</span>
+            <span class="setting-value mono" id="settPublicUrl">http://localhost:3000</span>
+          </div>
+          <p class="setting-hint">
+            ⚠️ For click tracking to work from Telegram, this must be a publicly accessible URL.
+            Use <code>npx ngrok http 3000</code> for testing, or deploy to a VPS.
+          </p>
+        </div>
+
+        <div class="card full-width">
+          <h3>📋 Setup Instructions</h3>
+          <div class="instructions">
+            <ol>
+              <li>Message your bot on Telegram with <code>/start</code></li>
+              <li>Create a new Telegram group and add the bot</li>
+              <li>Make the bot an <strong>Admin</strong> with all permissions</li>
+              <li>Send <code>/register</code> in the group</li>
+              <li>The bot will configure the group automatically</li>
+              <li>Share the invite link with up to 100 members</li>
+              <li>Add TikTok links using the <strong>Links</strong> tab</li>
+              <li>Links will be blasted daily at the configured time</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ── Toast Notification ──────────────────────────────── -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
