@@ -93,8 +93,15 @@ function initBot() {
                             }
                         }
                     );
-                    return;
+                } else {
+                    // Link not found or deleted
+                    bot.sendMessage(chatId,
+                        `❌ *Link Expired or Not Found*\n\n` +
+                        `This TikTok link has been removed by the admin or has expired.`,
+                        { parse_mode: 'Markdown' }
+                    );
                 }
+                return;
             }
 
             // Regular /start
@@ -430,9 +437,16 @@ function initBot() {
 
 // ─── Helpers ─────────────────────────────────────────────────────
 function isAdmin(userId) {
+    const envAdminId = process.env.ADMIN_TELEGRAM_ID;
+
+    // If .env has an ID, ONLY trust that ID
+    if (envAdminId && envAdminId.trim() !== '') {
+        return String(userId) === String(envAdminId).trim();
+    }
+
+    // Fallback to database only if .env is empty
     const savedAdmin = db.getSetting('admin_id');
-    return String(userId) === String(ADMIN_ID) ||
-        String(userId) === String(savedAdmin);
+    return String(userId) === String(savedAdmin);
 }
 
 function getBot() {
