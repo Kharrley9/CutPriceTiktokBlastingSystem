@@ -155,23 +155,49 @@
         </div>
       </div>
 
-      <!-- Links Table -->
-      <div class="table-container">
-        <table class="data-table" id="linksTable">
+      <!-- Pending Links Table -->
+      <div class="panel-header" style="margin-top: 24px; border-bottom: none; padding-bottom: 0;">
+        <h3 style="font-size: 16px; color: var(--accent);">⏳ Pending Queue</h3>
+      </div>
+      <div class="table-container" style="margin-top: 10px;">
+        <table class="data-table" id="pendingTable">
           <thead>
             <tr>
               <th>#</th>
               <th>URL</th>
-              <th>Title</th>
+              <th>Name</th>
               <th>Status</th>
-              <th>Clicks</th>
-              <th>Submitted</th>
+              <th>Created</th>
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="linksBody">
+          <tbody id="pendingBody">
             <tr>
-              <td colspan="7" class="empty-state">Loading links...</td>
+              <td colspan="6" class="empty-state">Loading pending queue...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Blasted Links Table -->
+      <div class="panel-header" style="margin-top: 32px; border-bottom: none; padding-bottom: 0;">
+        <h3 style="font-size: 16px; color: var(--success);">✅ Blasted History</h3>
+      </div>
+      <div class="table-container" style="margin-top: 10px;">
+        <table class="data-table" id="blastedTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>URL</th>
+              <th>Name</th>
+              <th>Clicks</th>
+              <th>Sent At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="blastedBody">
+            <tr>
+              <td colspan="6" class="empty-state">No blasted links yet.</td>
             </tr>
           </tbody>
         </table>

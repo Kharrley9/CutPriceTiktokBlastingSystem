@@ -90,7 +90,11 @@ const addLink = db.prepare(`
 
 const getNextPriority = db.prepare('SELECT COALESCE(MAX(priority_order), 0) + 1 AS next FROM links');
 
-const getAllLinks = db.prepare('SELECT * FROM links ORDER BY priority_order ASC, created_at ASC');
+const getAllLinks = db.prepare(`
+  SELECT l.*, (SELECT COUNT(*) FROM click_tracking WHERE link_id = l.id) as click_count
+  FROM links l
+  ORDER BY l.priority_order ASC, l.created_at ASC
+`);
 
 const getPendingLinks = db.prepare(`
   SELECT * FROM links WHERE status = 'pending'

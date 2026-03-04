@@ -50,28 +50,56 @@ async function loadStats() {
 // ─── Links ───────────────────────────────────────────────────────
 async function loadLinks() {
     const result = await api('/links');
-    const tbody = document.getElementById('linksBody');
+    const pendingBody = document.getElementById('pendingBody');
+    const blastedBody = document.getElementById('blastedBody');
 
-    if (!result.success || result.data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No links yet. Click "+ Add Link" to get started.</td></tr>';
+    if (!result.success) {
+        pendingBody.innerHTML = '<tr><td colspan="6" class="empty-state">Error loading links</td></tr>';
+        blastedBody.innerHTML = '<tr><td colspan="6" class="empty-state">Error loading links</td></tr>';
         return;
     }
 
-    tbody.innerHTML = result.data.map((link, i) => `
-    <tr>
-      <td>${i + 1}</td>
-      <td><div class="url-text" title="${escapeHtml(link.url)}">${escapeHtml(link.url)}</div></td>
-      <td>${escapeHtml(link.title) || '—'}</td>
-      <td><span class="badge badge-${link.status}">${link.status}</span></td>
-      <td>—</td>
-      <td>${formatDate(link.created_at)}</td>
-      <td>
-        <button class="btn btn-small btn-ghost" onclick="copyUrl('${escapeHtml(link.url)}')" title="Copy URL">📋</button>
-        ${link.status === 'pending' ? `<button class="btn btn-small btn-ghost" onclick="cutQueueLink(${link.id})" title="Cut Queue (Move to Top)">🔝</button>` : ''}
-        <button class="btn btn-small btn-danger" onclick="deleteLink(${link.id})" title="Delete">🗑️</button>
-      </td>
-    </tr>
-  `).join('');
+    const pendingLinks = result.data.filter(l => l.status === 'pending');
+    const blastedLinks = result.data.filter(l => l.status === 'blasted');
+
+    // Render Pending
+    if (pendingLinks.length === 0) {
+        pendingBody.innerHTML = '<tr><td colspan="6" class="empty-state">No links yet. Click "+ Add Link" to get started.</td></tr>';
+    } else {
+        pendingBody.innerHTML = pendingLinks.map((link, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td><div class="url-text" title="${escapeHtml(link.url)}">${escapeHtml(link.url)}</div></td>
+                <td>${escapeHtml(link.title) || '—'}</td>
+                <td><span class="badge badge-pending">pending</span></td>
+                <td>${formatDate(link.created_at)}</td>
+                <td>
+                    <button class="btn btn-small btn-ghost" onclick="copyUrl('${escapeHtml(link.url)}')" title="Copy URL">📋</button>
+                    <button class="btn btn-small btn-ghost" onclick="cutQueueLink(${link.id})" title="Cut Queue (Move to Top)">🔝</button>
+                    <button class="btn btn-small btn-danger" onclick="deleteLink(${link.id})" title="Delete">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Render Blasted
+    if (blastedLinks.length === 0) {
+        blastedBody.innerHTML = '<tr><td colspan="6" class="empty-state">No blasted links yet.</td></tr>';
+    } else {
+        blastedBody.innerHTML = blastedLinks.map((link, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td><div class="url-text" title="${escapeHtml(link.url)}">${escapeHtml(link.url)}</div></td>
+                <td>${escapeHtml(link.title) || '—'}</td>
+                <td>${link.click_count || 0}</td>
+                <td>${link.blasted_at ? formatDate(link.blasted_at) : '—'}</td>
+                <td>
+                    <button class="btn btn-small btn-ghost" onclick="copyUrl('${escapeHtml(link.url)}')" title="Copy URL">📋</button>
+                    <button class="btn btn-small btn-danger" onclick="deleteLink(${link.id})" title="Delete">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
+    }
 }
 
 async function cutQueueLink(id) {
