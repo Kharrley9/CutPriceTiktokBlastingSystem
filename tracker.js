@@ -9,6 +9,7 @@ const router = express.Router();
 
 router.get('/click/:linkId/:memberId', (req, res) => {
   const { linkId, memberId } = req.params;
+  console.log(`📡 Click detected: linkId=${linkId}, memberId=${memberId}`);
   const userAgent = req.headers['user-agent'] || '';
 
   const link = db.getLinkById(parseInt(linkId));

@@ -7,6 +7,7 @@ const ADMIN_ID = process.env.ADMIN_TELEGRAM_ID;
 const MAX_MEMBERS = parseInt(process.env.MAX_MEMBERS) || 100;
 
 let bot = null;
+let botInfo = null;
 let groupChatId = null;
 
 // ─── Handle Member Join (new + rejoin) ───────────────────────────────────────
@@ -57,13 +58,46 @@ function initBot() {
     // Load saved group chat ID
     groupChatId = db.getSetting('group_chat_id');
 
+    // Fetch bot info for deep linking
+    bot.getMe().then(info => {
+        botInfo = info;
+        console.log(`🤖 Bot identity: @${info.username}`);
+    });
+
     // ── /start command ──
-    bot.onText(/\/start/, (msg) => {
+    bot.onText(/\/start ?(.*)/, async (msg, match) => {
         const chatId = msg.chat.id;
         const userId = String(msg.from.id);
+        const payload = match[1];
 
         if (msg.chat.type === 'private') {
-            // Save admin ID on first /start if not set
+            // Handle Deep Linking payload (e.g., L_123)
+            if (payload && payload.startsWith('L_')) {
+                const linkId = parseInt(payload.split('_')[1]);
+                const link = db.getLinkById(linkId);
+
+                if (link) {
+                    // Record the click for this specific user
+                    db.addClick(linkId, userId, 'Telegram App');
+
+                    bot.sendMessage(chatId,
+                        `✅ *Link Verified!*\n\n` +
+                        `📌 *Item:* ${link.title || 'TikTok Product'}\n\n` +
+                        `Click the button below to open in TikTok:`,
+                        {
+                            parse_mode: 'Markdown',
+                            reply_markup: {
+                                inline_keyboard: [[
+                                    { text: '🚀 Open TikTok', url: link.url }
+                                ]]
+                            }
+                        }
+                    );
+                    return;
+                }
+            }
+
+            // Regular /start (unchanged behavior)
             if (!ADMIN_ID || ADMIN_ID === '') {
                 db.setSetting('admin_id', userId);
                 process.env.ADMIN_TELEGRAM_ID = userId;
@@ -425,14 +459,16 @@ async function triggerBlast() {
     message += `📅 ${today}\n`;
     message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
+    const botUsername = botInfo ? botInfo.username : 'BotUsername';
+
     for (let i = 0; i < pendingLinks.length; i++) {
         const link = pendingLinks[i];
         const title = link.title || link.submitter_name || `Link #${i + 1}`;
-        const trackedUrl = `${baseUrl}/click/${link.id}/0`;
+        // Deep link format: https://t.me/botname?start=L_ID
+        const deepLink = `https://t.me/${botUsername}?start=L_${link.id}`;
 
         message += `${i + 1}. *${title}*\n`;
-        message += `🔗 Click link below 👇\n`;
-        message += `[${link.url}](${trackedUrl})\n\n`;
+        message += `🔗 [Tap here to open link](${deepLink})\n\n`;
     }
 
     message += `━━━━━━━━━━━━━━━━━━━━\n`;

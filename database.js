@@ -122,7 +122,12 @@ const addMember = db.prepare(`
 
 const getMember = db.prepare('SELECT * FROM members WHERE telegram_id = ?');
 
-const getAllMembers = db.prepare('SELECT * FROM members WHERE is_active = 1 ORDER BY joined_at ASC');
+const getAllMembers = db.prepare(`
+  SELECT m.*, (SELECT COUNT(*) FROM click_tracking WHERE member_telegram_id = m.telegram_id) as total_clicks
+  FROM members m
+  WHERE m.is_active = 1
+  ORDER BY m.joined_at ASC
+`);
 
 const getActiveCount = db.prepare('SELECT COUNT(*) as count FROM members WHERE is_active = 1');
 
