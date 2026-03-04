@@ -204,10 +204,15 @@ const getTodayBlasts = db.prepare(`
 `);
 
 const getBlastHistory = db.prepare(`
-  SELECT bh.blast_date, COUNT(*) as link_count,
-    SUM(CASE WHEN EXISTS (
-      SELECT 1 FROM click_tracking ct WHERE ct.link_id = bh.link_id
-    ) THEN 1 ELSE 0 END) as clicked_count
+  SELECT 
+    bh.blast_date, 
+    COUNT(DISTINCT bh.link_id) as link_count,
+    (SELECT COUNT(DISTINCT ct.member_telegram_id) 
+     FROM click_tracking ct 
+     JOIN members m ON ct.member_telegram_id = m.telegram_id
+     WHERE DATE(ct.clicked_at, '+8 hours') = bh.blast_date
+    ) as unique_clickers,
+    (SELECT COUNT(*) FROM members WHERE joined_at <= bh.blast_date || ' 23:59:59') as total_members_at_time
   FROM blast_history bh
   GROUP BY bh.blast_date
   ORDER BY bh.blast_date DESC
@@ -217,13 +222,13 @@ const getBlastHistory = db.prepare(`
 // ─── Stats ───────────────────────────────────────────────────────
 const getDailyStats = db.prepare(`
   SELECT
-    DATE(ct.clicked_at) as date,
+    DATE(ct.clicked_at, '+8 hours') as date,
     COUNT(*) as total_clicks,
     COUNT(DISTINCT ct.member_telegram_id) as unique_clickers,
     COUNT(DISTINCT ct.link_id) as links_clicked
   FROM click_tracking ct
-  WHERE ct.clicked_at >= DATE('now', '-30 days')
-  GROUP BY DATE(ct.clicked_at)
+  WHERE ct.clicked_at >= DATETIME('now', '-30 days', '+8 hours')
+  GROUP BY date
   ORDER BY date DESC
 `);
 

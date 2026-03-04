@@ -354,12 +354,12 @@ async function loadBlastHistory() {
     }
 
     tbody.innerHTML = result.data.map(b => {
-        const rate = b.link_count > 0 ? Math.round((b.clicked_count / b.link_count) * 100) : 0;
+        const rate = b.total_members_at_time > 0 ? Math.round((b.unique_clickers / b.total_members_at_time) * 100) : 0;
         return `
       <tr>
         <td>${b.blast_date}</td>
         <td>${b.link_count}</td>
-        <td>${b.clicked_count}</td>
+        <td>${b.unique_clickers} / ${b.total_members_at_time}</td>
         <td>
           <div style="display:flex;align-items:center;gap:8px">
             <div style="flex:1;height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden">
@@ -383,12 +383,29 @@ async function loadDailyChart() {
     }
 
     const maxClicks = Math.max(...result.data.map(d => d.total_clicks), 1);
+    const total30Days = result.data.reduce((acc, d) => acc + d.total_clicks, 0);
+
+    // Add total clicks badge to the header if not exists
+    const cardHeader = container.closest('.card').querySelector('.card-header');
+    let badge = cardHeader.querySelector('.total-30-badge');
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'badge total-30-badge';
+        badge.style.background = 'var(--gradient-1)';
+        badge.style.color = 'white';
+        cardHeader.appendChild(badge);
+    }
+    badge.textContent = `${total30Days} Clicks (30d)`;
 
     container.innerHTML = result.data.reverse().map(d => {
-        const height = Math.max((d.total_clicks / maxClicks) * 160, 4);
+        const height = Math.max((d.total_clicks / maxClicks) * 140, 4);
+        const dayMonth = new Date(d.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
         return `
-      <div class="chart-bar" style="height:${height}px" title="${d.date}">
-        <div class="tooltip">${d.date}<br>${d.total_clicks} clicks, ${d.unique_clickers} users</div>
+      <div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:30px;height:100%;justify-content:flex-end;gap:8px">
+        <div class="chart-bar" style="height:${height}px;width:100%;max-width:24px" title="${d.date}">
+          <div class="tooltip">${d.date}<br>${d.total_clicks} clicks, ${d.unique_clickers} users</div>
+        </div>
+        <span style="font-size:10px;color:var(--text-muted);white-space:nowrap">${dayMonth}</span>
       </div>
     `;
     }).join('');
