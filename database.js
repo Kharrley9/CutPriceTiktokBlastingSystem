@@ -237,8 +237,18 @@ module.exports = {
   deleteLink: (id) => deleteLink.run(id),
   deleteAllLinks: () => db.prepare('DELETE FROM links').run(),
   cutQueueLink: (id) => {
-    const minPriority = db.prepare('SELECT MIN(priority_order) as minP FROM links').get().minP || 0;
-    return db.prepare('UPDATE links SET priority_order = ? WHERE id = ?').run(minPriority - 1, id);
+    const transaction = db.transaction(() => {
+      // Find the current minimum priority among pending links
+      const minPending = db.prepare("SELECT MIN(priority_order) as minP FROM links WHERE status = 'pending'").get().minP;
+      if (minPending === null) return;
+
+      // Shift all pending links down by 1
+      db.prepare("UPDATE links SET priority_order = priority_order + 1 WHERE status = 'pending'").run();
+
+      // Set the target link to the original minimum pending priority
+      db.prepare('UPDATE links SET priority_order = ? WHERE id = ?').run(minPending, id);
+    });
+    return transaction();
   },
   getLinkById: (id) => getLinkById.get(id),
   getLinkCount: () => getLinkCount.get().count,

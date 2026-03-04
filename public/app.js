@@ -59,7 +59,7 @@ async function loadLinks() {
 
     tbody.innerHTML = result.data.map((link, i) => `
     <tr>
-      <td>${link.priority_order}</td>
+      <td>${i + 1}</td>
       <td><div class="url-text" title="${escapeHtml(link.url)}">${escapeHtml(link.url)}</div></td>
       <td>${escapeHtml(link.title) || '—'}</td>
       <td><span class="badge badge-${link.status}">${link.status}</span></td>
