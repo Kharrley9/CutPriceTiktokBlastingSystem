@@ -97,26 +97,27 @@ function initBot() {
                 }
             }
 
-            // Regular /start (unchanged behavior)
-            if (!ADMIN_ID || ADMIN_ID === '') {
-                db.setSetting('admin_id', userId);
-                process.env.ADMIN_TELEGRAM_ID = userId;
-            }
-
-            bot.sendMessage(chatId,
-                `🎯 *Cut Price Blast System*\n\n` +
+            // Regular /start
+            let welcomeMsg = `🎯 *Cut Price Blast System*\n\n` +
                 `Welcome! This bot manages TikTok cut price links.\n\n` +
                 `📋 *Commands:*\n` +
-                `/submit <url> - Submit a TikTok link\n` +
-                `/myid - Get your Telegram ID\n\n` +
-                `👑 *Admin Commands:*\n` +
-                `/setup - Create the private group\n` +
-                `/invite - Get group invite link\n` +
-                `/blast - Manually trigger link blast\n` +
-                `/stats - View today's click stats\n` +
-                `/nonclickers - View who hasn't clicked today`,
-                { parse_mode: 'Markdown' }
-            );
+                `/myid - Get your Telegram ID\n\n`;
+
+            if (isAdmin(userId)) {
+                welcomeMsg += `👑 *Admin Commands:*\n` +
+                    `/submit <url> - Submit a TikTok link\n` +
+                    `/setup - Create the private group\n` +
+                    `/invite - Get group invite link\n` +
+                    `/blast - Manually trigger link blast\n` +
+                    `/stats - View today's click stats\n` +
+                    `/nonclickers - View who hasn't clicked today`;
+            } else {
+                welcomeMsg += `━━━━━━━━━━━━━━━━━━━━\n` +
+                    `⚠️ *Anda adalah Ahli Biasa*\n` +
+                    `Link harian akan dihantar ke dalam Group. Pastikan anda klik semua link untuk mengelakkan daripada dibuang.`;
+            }
+
+            bot.sendMessage(chatId, welcomeMsg, { parse_mode: 'Markdown' });
         }
     });
 
@@ -128,10 +129,16 @@ function initBot() {
         );
     });
 
-    // ── /submit command ──
+    // ── /submit command (Admin only) ──
     bot.onText(/\/submit (.+)/, (msg, match) => {
         const chatId = msg.chat.id;
+        const userId = String(msg.from.id);
         const url = match[1].trim();
+
+        if (!isAdmin(userId)) {
+            bot.sendMessage(chatId, '❌ Admin only command.');
+            return;
+        }
 
         // Validate URL
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
