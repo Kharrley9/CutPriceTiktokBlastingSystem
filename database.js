@@ -236,6 +236,10 @@ module.exports = {
   updateLink: (id, url, title, description, priority) => updateLink.run(url, title, description, priority, id),
   deleteLink: (id) => deleteLink.run(id),
   deleteAllLinks: () => db.prepare('DELETE FROM links').run(),
+  cutQueueLink: (id) => {
+    const minPriority = db.prepare('SELECT MIN(priority_order) as minP FROM links').get().minP || 0;
+    return db.prepare('UPDATE links SET priority_order = ? WHERE id = ?').run(minPriority - 1, id);
+  },
   getLinkById: (id) => getLinkById.get(id),
   getLinkCount: () => getLinkCount.get().count,
   getPendingCount: () => getPendingCount.get().count,

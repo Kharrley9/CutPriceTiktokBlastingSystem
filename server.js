@@ -63,6 +63,15 @@ app.put('/api/links/:id', (req, res) => {
     }
 });
 
+app.post('/api/links/:id/cut', (req, res) => {
+    try {
+        db.cutQueueLink(parseInt(req.params.id));
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.delete('/api/links/:id', (req, res) => {
     try {
         if (req.params.id === 'all') {

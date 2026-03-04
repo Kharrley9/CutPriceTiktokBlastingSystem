@@ -67,10 +67,22 @@ async function loadLinks() {
       <td>${formatDate(link.created_at)}</td>
       <td>
         <button class="btn btn-small btn-ghost" onclick="copyUrl('${escapeHtml(link.url)}')" title="Copy URL">📋</button>
+        ${link.status === 'pending' ? `<button class="btn btn-small btn-ghost" onclick="cutQueueLink(${link.id})" title="Cut Queue (Move to Top)">🔝</button>` : ''}
         <button class="btn btn-small btn-danger" onclick="deleteLink(${link.id})" title="Delete">🗑️</button>
       </td>
     </tr>
   `).join('');
+}
+
+async function cutQueueLink(id) {
+    if (!confirm('Move this link to the top of the queue?')) return;
+    const result = await api(`/links/${id}/cut`, { method: 'POST' });
+    if (result.success) {
+        showToast('Link moved to top! 🔝', 'success');
+        loadLinks();
+    } else {
+        showToast(`Error: ${result.error}`, 'error');
+    }
 }
 
 function showAddLink() {
