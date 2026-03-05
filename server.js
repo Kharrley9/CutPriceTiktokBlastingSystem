@@ -12,7 +12,8 @@ const PORT = process.env.PORT || 3000;
 // ─── Middleware ───────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files from root
+app.use(express.static(__dirname));
 
 // ─── Click Tracking Routes ──────────────────────────────────────
 app.use('/', trackerRoutes);
