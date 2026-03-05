@@ -46,7 +46,7 @@ app.use('/assets', express.static(path.join(__dirname, 'assets')));
 // API: Login
 app.post('/api/login', (req, res) => {
     const { password } = req.body;
-    if (password === '123CPT') {
+    if (password === '123cpt') {
         req.session.isAdmin = true;
         res.json({ success: true });
     } else {
