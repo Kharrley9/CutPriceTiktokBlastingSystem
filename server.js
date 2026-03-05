@@ -3,20 +3,80 @@ const express = require('express');
 const path = require('path');
 const db = require('./database');
 const trackerRoutes = require('./tracker');
+const session = require('express-session');
 const { initBot, triggerBlast } = require('./bot');
 const { initScheduler } = require('./scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ─── Session Configuration ────────────────────────────────────────
+app.use(session({
+    secret: 'cut-price-blast-premium-secret-2026',
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        secure: false, // Set to true if using HTTPS
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
+// ─── Auth Middleware ──────────────────────────────────────────────
+const authMiddleware = (req, res, next) => {
+    if (req.session && req.session.isAdmin) {
+        next();
+    } else {
+        // If it's an API call, return 401
+        if (req.path.startsWith('/api') && req.path !== '/api/login') {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+        // Otherwise redirect to login
+        res.redirect('/login.html');
+    }
+};
+
 // ─── Middleware ───────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// Serve static files from root
-app.use(express.static(__dirname));
 
-// ─── Click Tracking Routes ──────────────────────────────────────
+// ─── Public Routes (No Auth Required) ─────────────────────────────
+// Serve assets folder
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
+// API: Login
+app.post('/api/login', (req, res) => {
+    const { password } = req.body;
+    if (password === '123CPT') {
+        req.session.isAdmin = true;
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ success: false, error: 'Password salah' });
+    }
+});
+
+// Serve Login Page
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+// ─── Click Tracking Routes (Public) ──────────────────────────────
 app.use('/', trackerRoutes);
+
+// ─── Protected Routes (Auth Required) ─────────────────────────────
+// Protection for dashboard and API
+app.use('/api', authMiddleware);
+
+// Explicitly serve frontend files with protection
+app.get('/', authMiddleware, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/index.html', authMiddleware, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/app.js', authMiddleware, (req, res) => res.sendFile(path.join(__dirname, 'app.js')));
+app.get('/style.css', authMiddleware, (req, res) => res.sendFile(path.join(__dirname, 'style.css')));
+
+// API: Logout
+app.post('/api/logout', (req, res) => {
+    req.session.destroy();
+    res.json({ success: true });
+});
 
 // ─── API: Links ──────────────────────────────────────────────────
 app.get('/api/links', (req, res) => {

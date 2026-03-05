@@ -6,10 +6,27 @@ async function api(endpoint, options = {}) {
             ...options,
             body: options.body ? JSON.stringify(options.body) : undefined
         });
+
+        // Handle Session Expiry / Unauthorized Access
+        if (res.status === 401) {
+            window.location.href = '/login.html';
+            return { success: false, error: 'Session expired' };
+        }
+
         return await res.json();
     } catch (err) {
         console.error('API Error:', err);
         return { success: false, error: err.message };
+    }
+}
+
+async function logout() {
+    if (!confirm('Adakah anda pasti mahu Log Out?')) return;
+    try {
+        await fetch('/api/logout', { method: 'POST' });
+        window.location.href = '/login.html';
+    } catch (err) {
+        window.location.href = '/login.html';
     }
 }
 
