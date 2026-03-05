@@ -58,6 +58,12 @@ function initBot() {
     // Load saved group chat ID
     groupChatId = db.getSetting('group_chat_id');
 
+    // Set default (regular user) commands globally
+    bot.setMyCommands([
+        { command: 'start', description: 'Main menu' },
+        { command: 'myid', description: 'Check my ID' }
+    ]).then(() => console.log('✅ Global default commands set')).catch(e => console.error('❌ Error setting global commands:', e.message));
+
     // Fetch bot info for deep linking
     bot.getMe().then(info => {
         botInfo = info;
@@ -445,9 +451,9 @@ function initBot() {
 async function setBotCommands(userId) {
     try {
         if (isAdmin(userId)) {
-            // Special commands for admins
+            // Special commands for admins — overrides global defaults only for this user
             await bot.setMyCommands([
-                { command: 'start', description: 'Main menu' },
+                { command: 'start', description: 'Admin Control Center' },
                 { command: 'submit', description: 'Submit a TikTok link' },
                 { command: 'blast', description: 'Trigger link blast' },
                 { command: 'stats', description: 'View click stats' },
@@ -455,12 +461,15 @@ async function setBotCommands(userId) {
                 { command: 'setup', description: 'Configure group' },
                 { command: 'myid', description: 'Check my ID' }
             ], { scope: { type: 'chat', chat_id: userId } });
+            console.log(`👑 Admin menu set for ${userId}`);
         } else {
-            // Basic commands for regular users
-            await bot.setMyCommands([
-                { command: 'start', description: 'Main menu' },
-                { command: 'myid', description: 'Check my ID' }
-            ], { scope: { type: 'chat', chat_id: userId } });
+            // For regular users, we just ensure they use the global default
+            // deleting per-user scope if it exists
+            try {
+                await bot.deleteMyCommands({ scope: { type: 'chat', chat_id: userId } });
+            } catch (e) {
+                // Ignore if no custom scope existed
+            }
         }
     } catch (err) {
         console.error('Error setting bot commands:', err.message);
