@@ -81,7 +81,8 @@ function initBot() {
 
         if (msg.chat.type === 'private') {
             // Update bot commands menu for this specific user based on their role
-            setBotCommands(userId);
+            // We await this to ensure the menu is refreshed before user can interact further
+            await setBotCommands(userId);
 
             // Handle Deep Linking payload (e.g., L_123)
             if (payload && payload.startsWith('L_')) {
@@ -90,12 +91,13 @@ function initBot() {
 
                 if (link) {
                     db.addClick(linkId, userId, 'Telegram App');
+                    const safeTitle = escapeHtml(link.title || 'TikTok Product');
                     bot.sendMessage(chatId,
-                        `✅ *Link Verified!*\n\n` +
-                        `📌 *Item:* ${link.title || 'TikTok Product'}\n\n` +
+                        `✅ <b>Link Verified!</b>\n\n` +
+                        `📌 <b>Item:</b> ${safeTitle}\n\n` +
                         `Click the button below to open in TikTok:`,
                         {
-                            parse_mode: 'Markdown',
+                            parse_mode: 'HTML',
                             reply_markup: {
                                 inline_keyboard: [[
                                     { text: '🚀 Open TikTok', url: link.url }
@@ -105,38 +107,38 @@ function initBot() {
                     );
                 } else {
                     bot.sendMessage(chatId,
-                        `❌ *Link Expired or Not Found*\n\n` +
+                        `❌ <b>Link Expired or Not Found</b>\n\n` +
                         `This TikTok link has been removed by the admin or has expired.`,
-                        { parse_mode: 'Markdown' }
+                        { parse_mode: 'HTML' }
                     );
                 }
                 return;
             }
 
             // Regular /start
-            let welcomeMsg = `🎯 *Cut Price Blast System*\n\n`;
+            let welcomeMsg = `🎯 <b>Cut Price Blast System</b>\n\n`;
 
             if (adminStatus) {
                 welcomeMsg += `Welcome Admin! This bot manages TikTok cut price links.\n\n` +
-                    `👑 *Admin Commands:*\n` +
-                    `/submit <url> - Submit a TikTok link\n` +
+                    `👑 <b>Admin Commands:</b>\n` +
+                    `/submit &lt;url&gt; - Submit a TikTok link\n` +
                     `/setup - Create the private group\n` +
                     `/invite - Get group invite link\n` +
                     `/blast - Manually trigger link blast\n` +
                     `/stats - View today's click stats\n` +
                     `/nonclickers - View who hasn't clicked today\n\n` +
-                    `📋 *Regular Commands:*\n` +
+                    `📋 <b>Regular Commands:</b>\n` +
                     `/myid - Get your Telegram ID`;
             } else {
                 welcomeMsg += `Welcome to the TikTok Cut Price system!\n\n` +
-                    `📋 *Commands:*\n` +
+                    `📋 <b>Commands:</b>\n` +
                     `/myid - Get your Telegram ID\n\n` +
                     `━━━━━━━━━━━━━━━━━━━━\n` +
-                    `⚠️ *Anda adalah Ahli Biasa*\n` +
+                    `⚠️ <b>Anda adalah Ahli Biasa</b>\n` +
                     `Link harian akan dihantar ke dalam Group. Pastikan anda klik semua link untuk mengelakkan daripada dibuang.`;
             }
 
-            bot.sendMessage(chatId, welcomeMsg, { parse_mode: 'Markdown' });
+            bot.sendMessage(chatId, welcomeMsg, { parse_mode: 'HTML' });
         }
     });
 
@@ -476,31 +478,6 @@ async function setBotCommands(userId) {
     }
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────
-function isAdmin(userId) {
-    const envAdminId = process.env.ADMIN_TELEGRAM_ID;
-
-    // 1. Check .env (highest priority)
-    if (envAdminId && envAdminId.trim() !== '') {
-        const isEnvAdmin = String(userId) === String(envAdminId).trim();
-        if (isEnvAdmin) return true;
-    }
-
-    // 2. Fallback to database
-    const savedAdmin = db.getSetting('admin_id');
-    const isDbAdmin = String(userId) === String(savedAdmin);
-
-    return isDbAdmin;
-}
-
-function getBot() {
-    return bot;
-}
-
-function getGroupChatId() {
-    return groupChatId || db.getSetting('group_chat_id');
-}
-
 // ─── Blast Function ──────────────────────────────────────────────
 async function triggerBlast() {
     const baseUrl = process.env.PUBLIC_URL || 'http://localhost:3000';
@@ -561,6 +538,49 @@ async function triggerBlast() {
     } catch (err) {
         return `❌ Blast error: ${err.message}`;
     }
+}
+
+function isAdmin(userId) {
+    const envAdminId = process.env.ADMIN_TELEGRAM_ID;
+
+    // 1. Check .env (highest priority)
+    if (envAdminId && envAdminId.trim() !== '') {
+        const isEnvAdmin = String(userId) === String(envAdminId).trim();
+        if (isEnvAdmin) {
+            console.log(`🛡️ Security: User ${userId} verified as ADMIN via .env`);
+            return true;
+        }
+    }
+
+    // 2. Fallback to database
+    const savedAdmin = db.getSetting('admin_id');
+    const isDbAdmin = String(userId) === String(savedAdmin);
+
+    if (isDbAdmin) {
+        console.log(`🛡️ Security: User ${userId} verified as ADMIN via Database`);
+    } else {
+        console.log(`🛡️ Security: User ${userId} denied admin access`);
+    }
+
+    return isDbAdmin;
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function getBot() {
+    return bot;
+}
+
+function getGroupChatId() {
+    return groupChatId || db.getSetting('group_chat_id');
 }
 
 function sleep(ms) {
