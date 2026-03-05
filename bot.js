@@ -69,17 +69,21 @@ function initBot() {
         const chatId = msg.chat.id;
         const userId = String(msg.from.id);
         const payload = match[1];
+        const adminStatus = isAdmin(userId);
+
+        console.log(`📡 /start from ${msg.from.first_name} [${userId}] | Payload: "${payload}" | IsAdmin: ${adminStatus}`);
 
         if (msg.chat.type === 'private') {
+            // Update bot commands menu for this specific user based on their role
+            setBotCommands(userId);
+
             // Handle Deep Linking payload (e.g., L_123)
             if (payload && payload.startsWith('L_')) {
                 const linkId = parseInt(payload.split('_')[1]);
                 const link = db.getLinkById(linkId);
 
                 if (link) {
-                    // Record the click for this specific user
                     db.addClick(linkId, userId, 'Telegram App');
-
                     bot.sendMessage(chatId,
                         `✅ *Link Verified!*\n\n` +
                         `📌 *Item:* ${link.title || 'TikTok Product'}\n\n` +
@@ -94,7 +98,6 @@ function initBot() {
                         }
                     );
                 } else {
-                    // Link not found or deleted
                     bot.sendMessage(chatId,
                         `❌ *Link Expired or Not Found*\n\n` +
                         `This TikTok link has been removed by the admin or has expired.`,
@@ -105,21 +108,24 @@ function initBot() {
             }
 
             // Regular /start
-            let welcomeMsg = `🎯 *Cut Price Blast System*\n\n` +
-                `Welcome! This bot manages TikTok cut price links.\n\n` +
-                `📋 *Commands:*\n` +
-                `/myid - Get your Telegram ID\n\n`;
+            let welcomeMsg = `🎯 *Cut Price Blast System*\n\n`;
 
-            if (isAdmin(userId)) {
-                welcomeMsg += `👑 *Admin Commands:*\n` +
+            if (adminStatus) {
+                welcomeMsg += `Welcome Admin! This bot manages TikTok cut price links.\n\n` +
+                    `👑 *Admin Commands:*\n` +
                     `/submit <url> - Submit a TikTok link\n` +
                     `/setup - Create the private group\n` +
                     `/invite - Get group invite link\n` +
                     `/blast - Manually trigger link blast\n` +
                     `/stats - View today's click stats\n` +
-                    `/nonclickers - View who hasn't clicked today`;
+                    `/nonclickers - View who hasn't clicked today\n\n` +
+                    `📋 *Regular Commands:*\n` +
+                    `/myid - Get your Telegram ID`;
             } else {
-                welcomeMsg += `━━━━━━━━━━━━━━━━━━━━\n` +
+                welcomeMsg += `Welcome to the TikTok Cut Price system!\n\n` +
+                    `📋 *Commands:*\n` +
+                    `/myid - Get your Telegram ID\n\n` +
+                    `━━━━━━━━━━━━━━━━━━━━\n` +
                     `⚠️ *Anda adalah Ahli Biasa*\n` +
                     `Link harian akan dihantar ke dalam Group. Pastikan anda klik semua link untuk mengelakkan daripada dibuang.`;
             }
@@ -435,18 +441,47 @@ function initBot() {
     return bot;
 }
 
+// ─── Role-based command sets ───
+async function setBotCommands(userId) {
+    try {
+        if (isAdmin(userId)) {
+            // Special commands for admins
+            await bot.setMyCommands([
+                { command: 'start', description: 'Main menu' },
+                { command: 'submit', description: 'Submit a TikTok link' },
+                { command: 'blast', description: 'Trigger link blast' },
+                { command: 'stats', description: 'View click stats' },
+                { command: 'invite', description: 'Get group invite link' },
+                { command: 'setup', description: 'Configure group' },
+                { command: 'myid', description: 'Check my ID' }
+            ], { scope: { type: 'chat', chat_id: userId } });
+        } else {
+            // Basic commands for regular users
+            await bot.setMyCommands([
+                { command: 'start', description: 'Main menu' },
+                { command: 'myid', description: 'Check my ID' }
+            ], { scope: { type: 'chat', chat_id: userId } });
+        }
+    } catch (err) {
+        console.error('Error setting bot commands:', err.message);
+    }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────
 function isAdmin(userId) {
     const envAdminId = process.env.ADMIN_TELEGRAM_ID;
 
-    // If .env has an ID, ONLY trust that ID
+    // 1. Check .env (highest priority)
     if (envAdminId && envAdminId.trim() !== '') {
-        return String(userId) === String(envAdminId).trim();
+        const isEnvAdmin = String(userId) === String(envAdminId).trim();
+        if (isEnvAdmin) return true;
     }
 
-    // Fallback to database only if .env is empty
+    // 2. Fallback to database
     const savedAdmin = db.getSetting('admin_id');
-    return String(userId) === String(savedAdmin);
+    const isDbAdmin = String(userId) === String(savedAdmin);
+
+    return isDbAdmin;
 }
 
 function getBot() {
