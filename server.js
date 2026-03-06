@@ -5,7 +5,7 @@ const db = require('./database');
 const trackerRoutes = require('./tracker');
 const session = require('express-session');
 const { initBot, triggerBlast } = require('./bot');
-const { initScheduler } = require('./scheduler');
+const { initScheduler, reschedule } = require('./scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,11 +26,14 @@ const authMiddleware = (req, res, next) => {
     if (req.session && req.session.isAdmin) {
         next();
     } else {
-        // If it's an API call, return 401
-        if (req.path.startsWith('/api') && req.path !== '/api/login') {
+        // Check if it's an API call using originalUrl to avoid relative path issues
+        if (req.originalUrl.startsWith('/api')) {
+            // Allow login API to pass through (though it's usually handled by an earlier route)
+            if (req.originalUrl === '/api/login') return next();
+
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
-        // Otherwise redirect to login
+        // Otherwise redirect to login page for browser requests
         res.redirect('/login.html');
     }
 };
@@ -50,7 +53,7 @@ app.post('/api/login', (req, res) => {
         req.session.isAdmin = true;
         res.json({ success: true });
     } else {
-        res.status(401).json({ success: false, error: 'Password salah' });
+        res.status(401).json({ success: false, error: 'Incorrect password' });
     }
 });
 
@@ -133,10 +136,39 @@ app.post('/api/links/:id/cut', (req, res) => {
     }
 });
 
+app.post('/api/links/:id/approve-priority', async (req, res) => {
+    try {
+        const linkId = parseInt(req.params.id);
+        const link = db.getLinkById(linkId);
+        if (!link) return res.status(404).json({ success: false, error: 'Link not found' });
+
+        db.approvePriority(linkId);
+
+        // Get actual position after approval
+        const position = db.getLinkQueuePosition(linkId);
+
+        // Notify user via Telegram
+        if (link.submitted_by_id) {
+            const { notifyUser } = require('./bot');
+            await notifyUser(link.submitted_by_id,
+                `✅ <b>Payment Confirmed!</b>\n\n` +
+                `Your link <b>"${link.title}"</b> has been moved to the VIP queue at position <b>#${position}</b>.\n` +
+                `It will be included in the next daily blast. 🚀`
+            );
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.delete('/api/links/:id', (req, res) => {
     try {
         if (req.params.id === 'all') {
             db.deleteAllLinks();
+        } else if (req.params.id === 'blasted') {
+            db.deleteBlastedLinks();
         } else {
             db.deleteLink(parseInt(req.params.id));
         }
@@ -203,6 +235,7 @@ app.get('/api/stats/overview', (req, res) => {
     try {
         const totalLinks = db.getLinkCount();
         const pendingLinks = db.getPendingCount();
+        const priorityRequests = db.getPriorityRequestCount();
         const totalMembers = db.getActiveCount();
         const inviteLink = db.getSetting('invite_link');
         const groupId = db.getSetting('group_chat_id');
@@ -212,6 +245,7 @@ app.get('/api/stats/overview', (req, res) => {
             data: {
                 total_links: totalLinks,
                 pending_links: pendingLinks,
+                priority_requests: priorityRequests,
                 total_members: totalMembers,
                 max_members: parseInt(process.env.MAX_MEMBERS) || 100,
                 invite_link: inviteLink,
@@ -281,7 +315,10 @@ app.post('/api/settings', (req, res) => {
         }
 
         // Update runtime values immediately
-        if (blast_time) process.env.BLAST_TIME = blast_time;
+        if (blast_time) {
+            process.env.BLAST_TIME = blast_time;
+            reschedule(blast_time);
+        }
         if (links_per_blast) process.env.LINKS_PER_BLAST = String(links_per_blast);
         if (max_members) process.env.MAX_MEMBERS = String(max_members);
 

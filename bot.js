@@ -58,6 +58,13 @@ function initBot() {
     // Load saved group chat ID
     groupChatId = db.getSetting('group_chat_id');
 
+    // Global Message Logger
+    bot.on('message', (msg) => {
+        const userId = msg.from.id;
+        const text = msg.text || '[No Text]';
+        console.log(`📩 [LOG] Incoming message from ${msg.from.first_name} (${userId}): "${text}"`);
+    });
+
     // Set default (regular user) commands globally
     bot.setMyCommands([
         { command: 'start', description: 'Main menu' },
@@ -77,111 +84,235 @@ function initBot() {
         const payload = match[1];
         const adminStatus = isAdmin(userId);
 
-        console.log(`📡 /start from ${msg.from.first_name} [${userId}] | Payload: "${payload}" | IsAdmin: ${adminStatus}`);
+        console.log(`📡 /start Handler Triggered | Payload: "${payload}" | From: ${msg.from.first_name} [${userId}]`);
 
-        if (msg.chat.type === 'private') {
-            // Update bot commands menu for this specific user based on their role
-            // We await this to ensure the menu is refreshed before user can interact further
-            await setBotCommands(userId);
+        try {
+            if (msg.chat.type === 'private') {
+                // Update bot commands menu for this specific user based on their role
+                // We await this to ensure the menu is refreshed before user can interact further
+                await setBotCommands(userId);
 
-            // Handle Deep Linking payload (e.g., L_123)
-            if (payload && payload.startsWith('L_')) {
-                const linkId = parseInt(payload.split('_')[1]);
-                const link = db.getLinkById(linkId);
+                // Handle Deep Linking payload (e.g., L_123)
+                if (payload && payload.startsWith('L_')) {
+                    const linkId = parseInt(payload.split('_')[1]);
+                    const link = db.getLinkById(linkId);
 
-                if (link) {
-                    db.addClick(linkId, userId, 'Telegram App');
-                    const safeTitle = escapeHtml(link.title || 'TikTok Product');
-                    bot.sendMessage(chatId,
-                        `✅ <b>Link Verified!</b>\n\n` +
-                        `📌 <b>Item:</b> ${safeTitle}\n\n` +
-                        `Click the button below to open in TikTok:`,
-                        {
-                            parse_mode: 'HTML',
-                            reply_markup: {
-                                inline_keyboard: [[
-                                    { text: '🚀 Open TikTok', url: link.url }
-                                ]]
+                    if (link) {
+                        db.addClick(linkId, userId, 'Telegram App');
+                        const safeTitle = escapeHtml(link.title || 'TikTok Product');
+                        bot.sendMessage(chatId,
+                            `✅ <b>Link Verified!</b>\n\n` +
+                            `📌 <b>Item:</b> ${safeTitle}\n\n` +
+                            `Click the button below to open in TikTok:`,
+                            {
+                                parse_mode: 'HTML',
+                                reply_markup: {
+                                    inline_keyboard: [[
+                                        { text: '🚀 Open TikTok', url: link.url }
+                                    ]]
+                                }
                             }
-                        }
-                    );
-                } else {
-                    bot.sendMessage(chatId,
-                        `❌ <b>Link Expired or Not Found</b>\n\n` +
-                        `This TikTok link has been removed by the admin or has expired.`,
-                        { parse_mode: 'HTML' }
-                    );
+                        );
+                    } else {
+                        bot.sendMessage(chatId,
+                            `❌ <b>Link Expired or Not Found</b>\n\n` +
+                            `This TikTok link has been removed by the admin or has expired.`,
+                            { parse_mode: 'HTML' }
+                        );
+                    }
+                    return;
                 }
-                return;
+
+                // Regular /start
+                let welcomeMsg = `🎯 <b>Cut Price Blast System</b>\n\n`;
+
+                if (adminStatus) {
+                    welcomeMsg += `Welcome Admin! This bot manages TikTok cut price links.\n\n` +
+                        `👑 <b>Admin Commands:</b>\n` +
+                        `/submit &lt;url&gt; &lt;name&gt; - Submit/Update your TikTok link with a name\n` +
+                        `/setup - Create the private group\n` +
+                        `/blast - Manually trigger link blast\n` +
+                        `/stats - View today's click stats\n` +
+                        `/nonclickers - View who hasn't clicked today\n\n` +
+                        `📋 <b>User Commands:</b>\n` +
+                        `/mylink - Check your current link status\n` +
+                        `/cutqueue - Request to cut queue (Paid Fast-Track)\n` +
+                        `/myid - Get your Telegram ID (Send to Admin: @Kharrley)`;
+                } else {
+                    welcomeMsg += `Welcome to the TikTok Cut Price system!\n\n` +
+                        `📝 <b>How to join:</b>\n` +
+                        `1. Send <code>/submit &lt;url&gt; &lt;name&gt;</code> here to add your link.\n` +
+                        `2. Wait for the daily blast to see your link in the group.\n\n` +
+                        `📋 <b>Commands:</b>\n` +
+                        `/submit &lt;url&gt; &lt;name&gt; - Submit/Update your TikTok link with a name\n` +
+                        `/mylink - Check your current link status\n` +
+                        `/cutqueue - Request to cut queue (Paid Fast-Track)\n` +
+                        `/myid - Get your Telegram ID\n\n` +
+                        `━━━━━━━━━━━━━━━━━━━━\n` +
+                        `⚠️ <b>Note:</b>\n` +
+                        `Links expire every 24 hours. Ensure you click other members' links in the group to stay active!`;
+                }
+
+                bot.sendMessage(chatId, welcomeMsg, { parse_mode: 'HTML' });
             }
-
-            // Regular /start
-            let welcomeMsg = `🎯 <b>Cut Price Blast System</b>\n\n`;
-
-            if (adminStatus) {
-                welcomeMsg += `Welcome Admin! This bot manages TikTok cut price links.\n\n` +
-                    `👑 <b>Admin Commands:</b>\n` +
-                    `/submit &lt;url&gt; - Submit a TikTok link\n` +
-                    `/setup - Create the private group\n` +
-                    `/invite - Get group invite link\n` +
-                    `/blast - Manually trigger link blast\n` +
-                    `/stats - View today's click stats\n` +
-                    `/nonclickers - View who hasn't clicked today\n\n` +
-                    `📋 <b>Regular Commands:</b>\n` +
-                    `/myid - Get your Telegram ID`;
-            } else {
-                welcomeMsg += `Welcome to the TikTok Cut Price system!\n\n` +
-                    `📋 <b>Commands:</b>\n` +
-                    `/myid - Get your Telegram ID\n\n` +
-                    `━━━━━━━━━━━━━━━━━━━━\n` +
-                    `⚠️ <b>Anda adalah Ahli Biasa</b>\n` +
-                    `Link harian akan dihantar ke dalam Group. Pastikan anda klik semua link untuk mengelakkan daripada dibuang.`;
-            }
-
-            bot.sendMessage(chatId, welcomeMsg, { parse_mode: 'HTML' });
+        } catch (err) {
+            console.error('❌ Error in /start handler:', err);
+            bot.sendMessage(chatId, `⚠️ <b>Bot Error:</b> something went wrong processing your request.\n\n${err.message}`, { parse_mode: 'HTML' });
         }
     });
 
     // ── /myid command ──
     bot.onText(/\/myid/, (msg) => {
         bot.sendMessage(msg.chat.id,
-            `🆔 Your Telegram ID: \`${msg.from.id}\`\n\nSet this as ADMIN_TELEGRAM_ID in .env file.`,
+            `🆔 Your Telegram ID: \`${msg.from.id}\``,
             { parse_mode: 'Markdown' }
         );
     });
 
-    // ── /submit command (Admin only) ──
+    // ── /mylink command ──
+    bot.onText(/\/mylink/, (msg) => {
+        const chatId = msg.chat.id;
+        const userId = String(msg.from.id);
+
+        const link = db.getUserPendingLink(userId);
+
+        if (!link) {
+            bot.sendMessage(chatId,
+                `❓ *You have no pending link.*\n\n` +
+                `Use \`/submit <url> <name>\` to add one for the next blast.`,
+                { parse_mode: 'Markdown' }
+            );
+            return;
+        }
+
+        const position = db.getLinkQueuePosition(link.id);
+        const blastTime = process.env.BLAST_TIME || '17:01';
+
+        // Calculate expected blast date (Malaysia Time UTC+8)
+        const now = new Date();
+        const myt = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+        const mytDateStr = myt.toISOString().split('T')[0];
+        const blastToday = new Date(`${mytDateStr}T${blastTime}:00.000Z`);
+
+        let expectedDate;
+        if (myt.getTime() >= blastToday.getTime()) {
+            // Already passed today's blast
+            const tomorrow = new Date(myt.getTime() + (24 * 60 * 60 * 1000));
+            expectedDate = tomorrow.toISOString().split('T')[0];
+        } else {
+            expectedDate = mytDateStr;
+        }
+
+        const blastStatus = position <= 10 ? "✅ *Targeted for next blast*" : "⚠️ *Queue long (May wait until tomorrow)*";
+
+        bot.sendMessage(chatId,
+            `📝 *Your Current Link:*\n\n` +
+            `🏷️ Name: *${link.title || 'No name'}*\n` +
+            `🔗 \`${link.url}\`\n` +
+            `📊 Status: *Pending*\n` +
+            `🔢 Queue Position: *#${position}*\n` +
+            `🚀 Expected Blast: *${expectedDate} at ${blastTime}*\n\n` +
+            `${blastStatus}\n` +
+            `━━━━━━━━━━━━━━━━━━━━\n` +
+            `⏰ Submitted: ${link.created_at_myt}\n\n` +
+            `_You can update this anytime by sending \`/submit <new_url> <new_name>\`_\n` +
+            `_To move your link to #1 instantly, send \`/cutqueue\`_`,
+            { parse_mode: 'Markdown' }
+        );
+    });
+
+    // ── /cutqueue command ──
+    bot.onText(/\/cutqueue/, (msg) => {
+        const chatId = msg.chat.id;
+        const userId = String(msg.from.id);
+
+        const link = db.getUserPendingLink(userId);
+
+        if (!link) {
+            bot.sendMessage(chatId,
+                `❓ *You have no pending link to promote.*\n\n` +
+                `Submit a link first using \`/submit <url> <name>\`.`,
+                { parse_mode: 'Markdown' }
+            );
+            return;
+        }
+
+        if (link.priority_approved) {
+            bot.sendMessage(chatId, `✅ *Your link is already at the top of the queue!*`);
+            return;
+        }
+
+        if (link.is_priority_requested) {
+            bot.sendMessage(chatId,
+                `⏳ *Priority Request Pending Approval*\n\n` +
+                `Please wait for the administrator to confirm your payment.`,
+                { parse_mode: 'Markdown' }
+            );
+            return;
+        }
+
+        db.requestPriority(link.id);
+
+        bot.sendMessage(chatId,
+            `🚀 *Cut Queue Request Received!*\n\n` +
+            `To move your link to #1 position, please follow these steps:\n\n` +
+            `1️⃣ Pay RM5 to the administrator (TNG/Bank Transfer)\n` +
+            `2️⃣ Send the payment receipt to Admin at: <b>@Kharrley</b>\n` +
+            `3️⃣ Once confirmed, your link will move to the TOP immediately.\n\n` +
+            `Status: *Waiting for Payment Confirmation*`,
+            { parse_mode: 'Markdown' }
+        );
+    });
+
+    // ── /submit command (All Users) ──
     bot.onText(/\/submit (.+)/, (msg, match) => {
         const chatId = msg.chat.id;
         const userId = String(msg.from.id);
-        const url = match[1].trim();
+        const input = match[1].trim();
 
-        if (!isAdmin(userId)) {
-            bot.sendMessage(chatId, '❌ Admin only command.');
-            return;
-        }
+        // Split by first space to get URL and Name
+        const parts = input.split(/\s+/);
+        const url = parts[0];
+        const customName = parts.slice(1).join(' ');
 
         // Validate URL
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            bot.sendMessage(chatId, '❌ Please provide a valid URL (must start with http:// or https://).');
+            bot.sendMessage(chatId, '❌ Please provide a valid URL (must start with http:// or https://).\n\nUsage: `/submit <url> <name>`', { parse_mode: 'Markdown' });
             return;
         }
 
-        const submitterName = msg.from.username || msg.from.first_name || 'Unknown';
+        const submitterName = msg.from.username || msg.from.first_name || 'User';
         const submitterId = String(msg.from.id);
+        const finalTitle = customName || submitterName;
 
         try {
-            db.addLink(url, '', '', null, submitterName, submitterId);
-            bot.sendMessage(chatId,
-                `✅ *Link Submitted!*\n\n` +
-                `🔗 ${url}\n` +
-                `📤 By: ${submitterName}\n` +
-                `📊 Status: Pending\n\n` +
-                `The link will be included in the daily blast.`,
-                { parse_mode: 'Markdown' }
-            );
+            // Check if user already has a pending link
+            const existing = db.getUserPendingLink(submitterId);
+
+            if (existing) {
+                // Update existing link
+                db.updateLink(existing.id, url, finalTitle, existing.description, existing.priority_order);
+                bot.sendMessage(chatId,
+                    `🔄 *Link Updated!*\n\n` +
+                    `🏷️ Name: *${finalTitle}*\n` +
+                    `🔗 ${url}\n\n` +
+                    `Your current pending link has been refreshed.`,
+                    { parse_mode: 'Markdown' }
+                );
+            } else {
+                // Add new link
+                db.addLink(url, finalTitle, '', null, submitterName, submitterId);
+                bot.sendMessage(chatId,
+                    `✅ *Link Submitted!*\n\n` +
+                    `🏷️ Name: *${finalTitle}*\n` +
+                    `🔗 ${url}\n` +
+                    `📊 Status: Pending\n\n` +
+                    `Your link is now in the queue for the next daily blast. 🚀`,
+                    { parse_mode: 'Markdown' }
+                );
+            }
         } catch (err) {
-            bot.sendMessage(chatId, `❌ Error submitting link: ${err.message}`);
+            bot.sendMessage(chatId, `❌ Error: ${err.message}`);
         }
     });
 
@@ -197,7 +328,7 @@ function initBot() {
 
         if (groupChatId) {
             bot.sendMessage(chatId,
-                `⚠️ Group already set up!\n\nGroup Chat ID: \`${groupChatId}\`\n\nUse /invite to get the invite link.`,
+                `⚠️ Group already set up!\n\nGroup Chat ID: \`${groupChatId}\``,
                 { parse_mode: 'Markdown' }
             );
             return;
@@ -257,7 +388,6 @@ function initBot() {
             // Generate invite link
             const inviteLink = await bot.createChatInviteLink(chatId, {
                 name: 'Cut Price Group Invite',
-                member_limit: MAX_MEMBERS,
                 creates_join_request: false
             });
 
@@ -284,39 +414,20 @@ function initBot() {
         }
     });
 
-    // ── /invite command (Admin only) ──
-    bot.onText(/\/invite/, async (msg) => {
-        const chatId = msg.chat.id;
-        const userId = String(msg.from.id);
+
+    // ── Callback Query Handler ──
+    bot.on('callback_query', async (query) => {
+        const chatId = query.message.chat.id;
+        const userId = String(query.from.id);
+        const data = query.data;
 
         if (!isAdmin(userId)) {
-            bot.sendMessage(chatId, '❌ Admin only command.');
+            bot.answerCallbackQuery(query.id, { text: '❌ Admin only.', show_alert: true });
             return;
         }
 
-        const targetGroup = groupChatId || db.getSetting('group_chat_id');
-        if (!targetGroup) {
-            bot.sendMessage(chatId, '❌ No group registered yet. Use /setup first.');
-            return;
-        }
-
-        try {
-            // Always generate a fresh invite link
-            const link = await bot.createChatInviteLink(targetGroup, {
-                name: 'Cut Price Group Invite',
-                member_limit: MAX_MEMBERS,
-                creates_join_request: false
-            });
-            const inviteLink = link.invite_link;
-            db.setSetting('invite_link', inviteLink);
-
-            bot.sendMessage(chatId,
-                `🔗 *Group Invite Link:*\n\n${inviteLink}\n\n👥 Max members: ${MAX_MEMBERS}\n\n_Link freshly generated ✅_`,
-                { parse_mode: 'Markdown' }
-            );
-        } catch (err) {
-            bot.sendMessage(chatId, `❌ Could not generate invite link: ${err.message}`);
-        }
+        // Acknowledge if any other buttons exist (e.g. from tracker)
+        bot.answerCallbackQuery(query.id);
     });
 
     // ── /blast command (Admin only) ──
@@ -451,27 +562,33 @@ function initBot() {
 
 // ─── Role-based command sets ───
 async function setBotCommands(userId) {
+    // Telegram API requires chat_id to be an integer for 'chat' scope
+    const chatIdInt = parseInt(userId, 10);
     try {
         if (isAdmin(userId)) {
             // Special commands for admins — overrides global defaults only for this user
             await bot.setMyCommands([
                 { command: 'start', description: 'Admin Control Center' },
-                { command: 'submit', description: 'Submit a TikTok link' },
+                { command: 'submit', description: 'Submit/Update link (URL Name)' },
+                { command: 'mylink', description: 'View my link status' },
+                { command: 'cutqueue', description: 'Request to cut queue (Paid)' },
                 { command: 'blast', description: 'Trigger link blast' },
                 { command: 'stats', description: 'View click stats' },
-                { command: 'invite', description: 'Get group invite link' },
+                { command: 'nonclickers', description: 'View non-clickers today' },
                 { command: 'setup', description: 'Configure group' },
                 { command: 'myid', description: 'Check my ID' }
-            ], { scope: { type: 'chat', chat_id: userId } });
+            ], { scope: { type: 'chat', chat_id: chatIdInt } });
             console.log(`👑 Admin menu set for ${userId}`);
         } else {
-            // For regular users, we just ensure they use the global default
-            // deleting per-user scope if it exists
-            try {
-                await bot.deleteMyCommands({ scope: { type: 'chat', chat_id: userId } });
-            } catch (e) {
-                // Ignore if no custom scope existed
-            }
+            // For regular users, set user-specific commands
+            await bot.setMyCommands([
+                { command: 'start', description: 'Welcome' },
+                { command: 'submit', description: 'Submit/Update link (URL Name)' },
+                { command: 'mylink', description: 'View my link status' },
+                { command: 'cutqueue', description: 'Request to cut queue (Paid)' },
+                { command: 'myid', description: 'Check my ID' }
+            ], { scope: { type: 'chat', chat_id: chatIdInt } });
+            console.log(`👤 User menu set for ${userId}`);
         }
     } catch (err) {
         console.error('Error setting bot commands:', err.message);
@@ -500,7 +617,7 @@ async function triggerBlast() {
     const today = mytDate.toISOString().split('T')[0];
     const members = db.getAllMembers();
 
-    let message = `🎯 *CUT PRICE TIKTOK — Daily Links*\n`;
+    let message = `🎯 <b>CUT PRICE TIKTOK — Daily Links</b>\n`;
     message += `📅 ${today}\n`;
     message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
@@ -508,22 +625,22 @@ async function triggerBlast() {
 
     for (let i = 0; i < pendingLinks.length; i++) {
         const link = pendingLinks[i];
-        const title = link.title || link.submitter_name || `Link #${i + 1}`;
+        const title = escapeHtml(link.title || link.submitter_name || `Link #${i + 1}`);
         // Deep link format: https://t.me/botname?start=L_ID
         const deepLink = `https://t.me/${botUsername}?start=L_${link.id}`;
 
-        message += `${i + 1}. *${title}*\n`;
-        message += `🔗 [Tap here to open link](${deepLink})\n\n`;
+        message += `${i + 1}. <b>${title}</b>\n`;
+        message += `🔗 <a href="${deepLink}">Tap here to open link</a>\n\n`;
     }
 
     message += `━━━━━━━━━━━━━━━━━━━━\n`;
-    message += `⚠️ *Klik semua link di atas!*\n`;
-    message += `📊 Admin akan monitor siapa yang tidak klik.`;
+    message += `⚠️ <b>Click all links above!</b>\n`;
+    message += `📊 Admin will monitor who hasn't clicked.`;
 
     try {
         // Send the complete message with all links
         const sentMsg = await bot.sendMessage(targetGroupId, message, {
-            parse_mode: 'Markdown',
+            parse_mode: 'HTML',
             disable_web_page_preview: true
         });
 
@@ -534,8 +651,12 @@ async function triggerBlast() {
             db.addBlastRecord(today, link.id, String(sentMsg.message_id));
         }
 
-        return `✅ *Blast Complete!*\n\n📨 ${pendingLinks.length} links sent to group.\n📊 Tracking active.`;
+        // Clear all remaining pending links (Fresh Start every day)
+        db.expireAllPendingLinks();
+
+        return `✅ <b>Blast Complete!</b>\n\n📨 ${pendingLinks.length} links sent to group.\n📊 Remaining queue auto-expired for tomorrow's fresh start.`;
     } catch (err) {
+        console.error('❌ Blast error:', err);
         return `❌ Blast error: ${err.message}`;
     }
 }
@@ -587,4 +708,15 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-module.exports = { initBot, getBot, getGroupChatId, triggerBlast, isAdmin };
+async function notifyUser(userId, message) {
+    if (!bot) return;
+    try {
+        await bot.sendMessage(userId, message, { parse_mode: 'HTML' });
+        return true;
+    } catch (err) {
+        console.error(`❌ notification error for user ${userId}:`, err.message);
+        return false;
+    }
+}
+
+module.exports = { initBot, getBot, getGroupChatId, triggerBlast, isAdmin, notifyUser };

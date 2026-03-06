@@ -32,6 +32,9 @@ db.exec(`
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'queued', 'blasted', 'expired')),
     submitted_by TEXT DEFAULT 'admin',
     submitted_by_id TEXT DEFAULT '',
+    is_priority_requested INTEGER DEFAULT 0,
+    priority_approved INTEGER DEFAULT 0,
+    priority_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     blasted_at DATETIME
   );
@@ -75,6 +78,10 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_members_active ON members(is_active);
 `);
 
+try { db.exec("ALTER TABLE links ADD COLUMN is_priority_requested INTEGER DEFAULT 0"); } catch (e) { }
+try { db.exec("ALTER TABLE links ADD COLUMN priority_approved INTEGER DEFAULT 0"); } catch (e) { }
+try { db.exec("ALTER TABLE links ADD COLUMN priority_at DATETIME"); } catch (e) { }
+
 // ─── Settings ────────────────────────────────────────────────────
 const getSetting = db.prepare('SELECT value FROM settings WHERE key = ?');
 const setSetting = db.prepare(`
@@ -91,14 +98,15 @@ const addLink = db.prepare(`
 const getNextPriority = db.prepare('SELECT COALESCE(MAX(priority_order), 0) + 1 AS next FROM links');
 
 const getAllLinks = db.prepare(`
-  SELECT l.*, (SELECT COUNT(*) FROM click_tracking WHERE link_id = l.id) as click_count
+  SELECT l.*, DATETIME(l.created_at, '+8 hours') as created_at_myt, 
+  (SELECT COUNT(*) FROM click_tracking WHERE link_id = l.id) as click_count
   FROM links l
-  ORDER BY l.priority_order ASC, l.created_at ASC
+  ORDER BY l.priority_approved DESC, COALESCE(l.priority_at, l.created_at) ASC, l.created_at ASC
 `);
 
 const getPendingLinks = db.prepare(`
   SELECT * FROM links WHERE status = 'pending'
-  ORDER BY priority_order ASC, created_at ASC
+  ORDER BY priority_approved DESC, COALESCE(priority_at, created_at) ASC, created_at ASC
   LIMIT ?
 `);
 
@@ -107,12 +115,28 @@ const updateLinkStatus = db.prepare('UPDATE links SET status = ?, blasted_at = C
 const updateLink = db.prepare('UPDATE links SET url = ?, title = ?, description = ?, priority_order = ? WHERE id = ?');
 
 const deleteLink = db.prepare('DELETE FROM links WHERE id = ?');
+const deleteBlastedLinks = db.prepare("DELETE FROM links WHERE status = 'blasted'");
 
-const getLinkById = db.prepare('SELECT * FROM links WHERE id = ?');
+const getLinkById = db.prepare("SELECT *, DATETIME(created_at, '+8 hours') as created_at_myt FROM links WHERE id = ?");
 
 const getLinkCount = db.prepare('SELECT COUNT(*) as count FROM links');
 
 const getPendingCount = db.prepare("SELECT COUNT(*) as count FROM links WHERE status = 'pending'");
+const getPriorityRequestCount = db.prepare("SELECT COUNT(*) as count FROM links WHERE is_priority_requested = 1 AND status = 'pending'");
+const getUserPendingLink = db.prepare("SELECT *, DATETIME(created_at, '+8 hours') as created_at_myt FROM links WHERE submitted_by_id = ? AND status = 'pending' LIMIT 1");
+const expireAllPendingLinks = db.prepare("UPDATE links SET status = 'expired' WHERE status = 'pending'");
+const requestPriority = db.prepare("UPDATE links SET is_priority_requested = 1, priority_at = CURRENT_TIMESTAMP WHERE id = ?");
+const approvePriority = db.prepare("UPDATE links SET is_priority_requested = 0, priority_approved = 1 WHERE id = ?");
+
+const getLinkQueuePosition = db.prepare(`
+  SELECT COUNT(*) + 1 as position FROM links 
+  WHERE status = 'pending' 
+  AND (
+    (priority_approved = 1 AND ? = 0) OR
+    (priority_approved = 1 AND ? = 1 AND COALESCE(priority_at, created_at) < COALESCE(?, created_at)) OR
+    (priority_approved = 0 AND ? = 0 AND created_at < ?)
+  )
+`);
 
 // ─── Members ─────────────────────────────────────────────────────
 const addMember = db.prepare(`
@@ -250,24 +274,32 @@ module.exports = {
   updateLinkStatus: (id, status) => updateLinkStatus.run(status, id),
   updateLink: (id, url, title, description, priority) => updateLink.run(url, title, description, priority, id),
   deleteLink: (id) => deleteLink.run(id),
+  deleteBlastedLinks: () => deleteBlastedLinks.run(),
   deleteAllLinks: () => db.prepare('DELETE FROM links').run(),
   cutQueueLink: (id) => {
-    const transaction = db.transaction(() => {
-      // Find the current minimum priority among pending links
-      const minPending = db.prepare("SELECT MIN(priority_order) as minP FROM links WHERE status = 'pending'").get().minP;
-      if (minPending === null) return;
-
-      // Shift all pending links down by 1
-      db.prepare("UPDATE links SET priority_order = priority_order + 1 WHERE status = 'pending'").run();
-
-      // Set the target link to the original minimum pending priority
-      db.prepare('UPDATE links SET priority_order = ? WHERE id = ?').run(minPending, id);
-    });
-    return transaction();
+    // Standardize to use priority_approved system instead of legacy priority_order
+    return db.prepare('UPDATE links SET priority_approved = 1, priority_at = CURRENT_TIMESTAMP, is_priority_requested = 0 WHERE id = ?').run(id);
   },
   getLinkById: (id) => getLinkById.get(id),
   getLinkCount: () => getLinkCount.get().count,
   getPendingCount: () => getPendingCount.get().count,
+  getPriorityRequestCount: () => getPriorityRequestCount.get().count,
+  getUserPendingLink: (userId) => getUserPendingLink.get(String(userId)),
+  expireAllPendingLinks: () => expireAllPendingLinks.run(),
+  requestPriority: (linkId) => requestPriority.run(linkId),
+  approvePriority: (linkId) => approvePriority.run(linkId),
+  getLinkQueuePosition: (linkId) => {
+    const link = getLinkById.get(linkId);
+    if (!link) return null;
+    // We pass (approved_status_of_link, approved_status_of_link, priority_at, approved_status_of_link, created_at)
+    return getLinkQueuePosition.get(
+      link.priority_approved,
+      link.priority_approved,
+      link.priority_at || link.created_at,
+      link.priority_approved,
+      link.created_at
+    ).position;
+  },
   // Members
   addMember: (telegramId, username, firstName, lastName) => addMember.run(String(telegramId), username || '', firstName || '', lastName || ''),
   getMember: (telegramId) => getMember.get(String(telegramId)),

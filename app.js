@@ -21,7 +21,7 @@ async function api(endpoint, options = {}) {
 }
 
 async function logout() {
-    if (!confirm('Adakah anda pasti mahu Log Out?')) return;
+    if (!confirm('Are you sure you want to Log Out?')) return;
     try {
         await fetch('/api/logout', { method: 'POST' });
         window.location.href = '/login.html';
@@ -55,6 +55,7 @@ async function loadStats() {
 
     if (overview.success) {
         document.getElementById('statPending').textContent = overview.data.pending_links;
+        document.getElementById('statPriority').textContent = overview.data.priority_requests;
         document.getElementById('statMembers').innerHTML = `${overview.data.total_members}<small>/${overview.data.max_members}</small>`;
     }
 
@@ -83,20 +84,37 @@ async function loadLinks() {
     if (pendingLinks.length === 0) {
         pendingBody.innerHTML = '<tr><td colspan="6" class="empty-state">No links yet. Click "+ Add Link" to get started.</td></tr>';
     } else {
-        pendingBody.innerHTML = pendingLinks.map((link, i) => `
-            <tr>
-                <td>${i + 1}</td>
-                <td><div class="url-text" title="${escapeHtml(link.url)}">${escapeHtml(link.url)}</div></td>
-                <td>${escapeHtml(link.title) || '—'}</td>
-                <td><span class="badge badge-pending">pending</span></td>
-                <td>${formatDate(link.created_at)}</td>
-                <td>
-                    <button class="btn btn-small btn-ghost" onclick="copyUrl('${escapeHtml(link.url)}')" title="Copy URL">📋</button>
-                    <button class="btn btn-small btn-ghost" onclick="cutQueueLink(${link.id})" title="Cut Queue (Move to Top)">🔝</button>
-                    <button class="btn btn-small btn-danger" onclick="deleteLink(${link.id})" title="Delete">🗑️</button>
-                </td>
-            </tr>
-        `).join('');
+        pendingBody.innerHTML = pendingLinks.map((link, i) => {
+            let statusBadge = `<span class="badge badge-pending">pending</span>`;
+            let rowClass = '';
+            let actionBtn = '';
+
+            if (link.priority_approved) {
+                statusBadge = `<span class="badge badge-blasted">VIP #1</span>`;
+                rowClass = 'priority-row';
+            } else if (link.is_priority_requested) {
+                statusBadge = `<span class="badge badge-priority">Payment Pending</span>`;
+                rowClass = 'priority-row';
+                actionBtn = `<button class="btn btn-small btn-primary" onclick="approvePriorityLink(${link.id})" title="Confirm Payment & Cut Queue">💎 Approve</button>`;
+            } else {
+                actionBtn = `<button class="btn btn-small btn-ghost" onclick="cutQueueLink(${link.id})" title="Cut Queue (Move to Top)">🔝</button>`;
+            }
+
+            return `
+                <tr class="${rowClass}">
+                    <td>${i + 1}</td>
+                    <td><div class="url-text" title="${escapeHtml(link.url)}">${escapeHtml(link.url)}</div></td>
+                    <td>${escapeHtml(link.title) || '—'}</td>
+                    <td>${statusBadge}</td>
+                    <td>${formatDate(link.created_at_myt || link.created_at)}</td>
+                    <td>
+                        <button class="btn btn-small btn-ghost" onclick="copyUrl('${escapeHtml(link.url)}')" title="Copy URL">📋</button>
+                        ${actionBtn}
+                        <button class="btn btn-small btn-danger" onclick="deleteLink(${link.id})" title="Delete">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
 
     // Render Blasted
@@ -124,6 +142,17 @@ async function cutQueueLink(id) {
     const result = await api(`/links/${id}/cut`, { method: 'POST' });
     if (result.success) {
         showToast('Link moved to top! 🔝', 'success');
+        loadLinks();
+    } else {
+        showToast(`Error: ${result.error}`, 'error');
+    }
+}
+
+async function approvePriorityLink(id) {
+    if (!confirm('🏆 Confirm payment was received? This will move the link to the TOP and notify the user.')) return;
+    const result = await api(`/links/${id}/approve-priority`, { method: 'POST' });
+    if (result.success) {
+        showToast('Priority approved! User notified. ✅', 'success');
         loadLinks();
     } else {
         showToast(`Error: ${result.error}`, 'error');
@@ -298,6 +327,19 @@ async function deleteAllLinks() {
     const result = await api('/links/all', { method: 'DELETE' });
     if (result.success) {
         showToast('All links removed! 🗑️', 'success');
+        loadLinks();
+        loadStats();
+    } else {
+        showToast(`Error: ${result.error}`, 'error');
+    }
+}
+
+async function deleteBlastedLinks() {
+    if (!confirm('⚠️ Are you sure you want to delete ALL blast history? This cannot be undone.')) return;
+
+    const result = await api('/links/blasted', { method: 'DELETE' });
+    if (result.success) {
+        showToast('Blast history has been deleted! 🗑️', 'success');
         loadLinks();
         loadStats();
     } else {

@@ -53,6 +53,13 @@
       </div>
     </div>
     <div class="stat-card">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #f5576c, #ff4757)">💎</div>
+      <div class="stat-info">
+        <span class="stat-value" id="statPriority">0</span>
+        <span class="stat-label">VIP Pending Approval</span>
+      </div>
+    </div>
+    <div class="stat-card">
       <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">👥</div>
       <div class="stat-info">
         <span class="stat-value" id="statMembers">0<small>/100</small></span>
@@ -109,8 +116,8 @@
       <div class="form-card hidden" id="importForm">
         <h3>📊 Import from Spreadsheet</h3>
         <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
-          Upload an Excel (.xlsx) or CSV file. Columns required: <strong>Nama :</strong> and <strong>Link
-            CutPriceTiktok :</strong>.
+          Upload an Excel (.xlsx) or CSV file. Columns required: <strong>Name :</strong> and <strong>TikTok Link
+            :</strong>.
         </p>
         <div class="form-group">
           <label>Choose File</label>
@@ -150,7 +157,7 @@
           <input type="text" id="linkTitle" placeholder="e.g. Ahmad, Siti..." class="form-input">
         </div>
         <div class="form-group">
-          <label>Link CutPriceTiktok :</label>
+          <label>TikTok Link :</label>
           <input type="url" id="linkUrl" placeholder="https://..." class="form-input">
         </div>
         <div class="form-actions">
@@ -184,8 +191,11 @@
       </div>
 
       <!-- Blasted Links Table -->
-      <div class="panel-header" style="margin-top: 32px; border-bottom: none; padding-bottom: 0;">
-        <h3 style="font-size: 16px; color: var(--success);">✅ Blasted History</h3>
+      <div class="panel-header"
+        style="margin-top: 32px; border-bottom: none; padding-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 16px; color: var(--success); margin: 0;">✅ Blasted History</h3>
+        <button class="btn btn-small btn-danger" onclick="deleteBlastedLinks()"
+          style="font-size: 12px; padding: 4px 12px;">🗑️ Clear Blasted</button>
       </div>
       <div class="table-container" style="margin-top: 10px;">
         <table class="data-table" id="blastedTable">

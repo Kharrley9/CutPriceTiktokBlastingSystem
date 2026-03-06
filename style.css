@@ -521,6 +521,23 @@ body::before {
   color: var(--danger);
 }
 
+.badge-priority {
+  background: rgba(245, 87, 108, 0.2);
+  color: #fff;
+  border: 1px solid var(--danger);
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(245, 87, 108, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0); }
+}
+
+.priority-row {
+  background: rgba(245, 87, 108, 0.05) !important;
+}
+
 .badge-danger {
   background: rgba(245, 87, 108, 0.15);
   color: var(--danger);
