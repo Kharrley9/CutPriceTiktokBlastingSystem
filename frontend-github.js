@@ -6,11 +6,17 @@ class GitHubDashboard {
   }
 
   getRepoOwner() {
-    if (window.location.hostname === 'localhost') return 'Kharrley9';
-    if (window.location.hostname.endsWith('.github.io')) {
-      return window.location.hostname.split('.')[0];
+    const hostname = window.location.hostname.toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1') return 'Kharrley9';
+
+    if (hostname.endsWith('.github.io')) {
+      return hostname.split('.')[0];
     }
-    return window.location.pathname.split('/')[1];
+
+    const pathParts = window.location.pathname.split('/');
+    // For GitHub Pages, path is usually /repo-name/
+    // If we're here, we might be on a custom domain or subpath
+    return pathParts[1] || 'Kharrley9';
   }
 
   getRepoName() {
