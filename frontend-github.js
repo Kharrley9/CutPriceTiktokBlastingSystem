@@ -23,23 +23,27 @@ class GitHubDashboard {
     return 'CutPriceTiktokBlastingSystem';
   }
 
-  async fetchData() {
+  async fetchData(token = null) {
     try {
-      const response = await fetch(`${this.apiBase}/contents/${this.dataFile}`);
-      if (!response.ok) throw new Error('Failed to fetch data');
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `token ${token}`;
+      }
+
+      const response = await fetch(`${this.apiBase}/contents/${this.dataFile}`, { headers });
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('GitHub API rate limit exceeded. Please use a valid token.');
+        }
+        throw new Error(`Failed to fetch data: ${response.statusText}`);
+      }
 
       const data = await response.json();
-      const content = atob(data.content);
+      const content = decodeURIComponent(escape(atob(data.content))); // Support UTF-8
       return JSON.parse(content);
     } catch (error) {
       console.error('Error fetching data:', error);
-      return {
-        links: [],
-        members: [],
-        clickTracking: [],
-        blastHistory: [],
-        settings: {}
-      };
+      throw error; // Let caller handled errors
     }
   }
 
@@ -48,7 +52,7 @@ class GitHubDashboard {
       throw new Error('GitHub token required for updates');
     }
 
-    const currentData = await this.fetchData();
+    const currentData = await this.fetchData(token);
     const updatedData = { ...currentData, ...updates };
 
     try {
@@ -79,9 +83,9 @@ class GitHubDashboard {
     }
   }
 
-  // Dashboard methods
-  async getStats() {
-    const data = await this.fetchData();
+  // Dashboard methods with token support
+  async getStats(token) {
+    const data = await this.fetchData(token);
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });
 
     const todayClicks = data.clickTracking.filter(click => {
@@ -101,8 +105,8 @@ class GitHubDashboard {
     };
   }
 
-  async getLinks() {
-    const data = await this.fetchData();
+  async getLinks(token) {
+    const data = await this.fetchData(token);
     return data.links.map(link => ({
       ...link,
       click_count: data.clickTracking.filter(click => click.link_id === link.id).length
@@ -134,8 +138,8 @@ class GitHubDashboard {
     await this.updateData(data, token);
   }
 
-  async getMembers() {
-    const data = await this.fetchData();
+  async getMembers(token) {
+    const data = await this.fetchData(token);
     return data.members
       .filter(member => member.is_active === 1)
       .map(member => ({
@@ -144,8 +148,8 @@ class GitHubDashboard {
       }));
   }
 
-  async getTodayClicks() {
-    const data = await this.fetchData();
+  async getTodayClicks(token) {
+    const data = await this.fetchData(token);
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });
 
     return data.clickTracking
@@ -166,8 +170,8 @@ class GitHubDashboard {
       });
   }
 
-  async getDailyStats() {
-    const data = await this.fetchData();
+  async getDailyStats(token) {
+    const data = await this.fetchData(token);
     const stats = {};
 
     data.clickTracking.forEach(click => {

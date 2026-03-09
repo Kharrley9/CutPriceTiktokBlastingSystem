@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CutPrice TikTok Blasting System - GitHub Edition</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=4">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -234,7 +234,7 @@
         </div>
     </div>
 
-    <script src="frontend-github.js"></script>
+    <script src="frontend-github.js?v=4"></script>
     <script>
         let githubToken = localStorage.getItem('githubToken');
         let dailyChart = null;
@@ -311,14 +311,14 @@
                 ]);
             } catch (error) {
                 console.error('Dashboard load error:', error);
-                alert('Failed to load dashboard data');
+                alert('⚠️ Failed to load dashboard data: ' + error.message);
             } finally {
                 showLoading(false);
             }
         }
 
         async function updateStats() {
-            const stats = await window.dashboard.getStats();
+            const stats = await window.dashboard.getStats(githubToken);
             document.getElementById('statPending').textContent = stats.pendingLinks;
             document.getElementById('statPriority').textContent = stats.todayBlasts || 0; // Show blasts in priority slot
             document.getElementById('statMembers').innerHTML = `${stats.totalMembers}<small>/100</small>`;
@@ -333,7 +333,7 @@
         }
 
         async function loadLinks() {
-            const links = await window.dashboard.getLinks();
+            const links = await window.dashboard.getLinks(githubToken);
             const tbody = document.getElementById('linksTableBody');
             tbody.innerHTML = '';
 
@@ -352,7 +352,7 @@
         }
 
         async function loadMembers() {
-            const members = await window.dashboard.getMembers();
+            const members = await window.dashboard.getMembers(githubToken);
             const tbody = document.getElementById('membersTableBody');
             tbody.innerHTML = '';
 
@@ -369,7 +369,7 @@
         }
 
         async function loadAnalytics() {
-            const stats = await window.dashboard.getDailyStats();
+            const stats = await window.dashboard.getDailyStats(githubToken);
             const ctx = document.getElementById('dailyChart').getContext('2d');
 
             if (dailyChart) {
@@ -416,7 +416,7 @@
         }
 
         async function loadActivity() {
-            const clicks = await window.dashboard.getTodayClicks();
+            const clicks = await window.dashboard.getTodayClicks(githubToken);
             const activityList = document.getElementById('activityList');
 
             if (clicks.length === 0) {
@@ -503,14 +503,35 @@
         }
 
         async function triggerManualBlast() {
-            if (!confirm('Trigger manual blast now?')) return;
+            if (!confirm('Trigger manual blast now via GitHub Actions?')) return;
 
             showLoading(true);
             try {
-                // This would trigger the GitHub Action
-                alert('Manual blast triggered! Check your Telegram group in a few minutes.');
+                const repoOwner = window.dashboard.getRepoOwner();
+                const repoName = window.dashboard.getRepoName();
+
+                // Trigger GitHub Action via workflow_dispatch
+                const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/actions/workflows/telegram-bot.yml/dispatches`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${githubToken}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ref: 'main'
+                    })
+                });
+
+                if (response.ok || response.status === 204) {
+                    alert('🚀 Manual blast triggered! Check the Actions tab or your Telegram group in a few minutes.');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to trigger workflow');
+                }
             } catch (error) {
-                alert('Failed to trigger blast: ' + error.message);
+                alert('❌ Failed to trigger blast: ' + error.message);
+                console.error('Blast trigger error:', error);
             } finally {
                 showLoading(false);
             }
