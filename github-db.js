@@ -4,7 +4,7 @@ const fs = require('fs');
 class GitHubDatabase {
   constructor() {
     this.octokit = new Octokit({
-      auth: process.env.GITHUB_TOKEN
+      auth: process.env.PERSONAL_GITHUB_TOKEN
     });
     this.owner = process.env.REPO_OWNER;
     this.repo = process.env.REPO_NAME;
