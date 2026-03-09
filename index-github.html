@@ -12,91 +12,117 @@
 <body>
     <div class="container">
         <header class="header">
-            <div class="header-content">
+            <div class="header-left">
                 <div class="logo">
-                    <span class="logo-icon">🎯</span>
+                    <img src="assets/logo.png" class="logo-icon" alt="Logo"
+                        style="height: 64px; width: auto; border-radius: 8px; object-fit: contain;">
                     <div>
-                        <h1>CutPrice TikTok Blasting</h1>
-                        <p class="subtitle">GitHub-Powered Dashboard</p>
+                        <h1>CutPriceTiktok Blasting System</h1>
+                        <span class="subtitle">GitHub-Powered Dashboard</span>
                     </div>
                 </div>
-                <div id="repo-info" class="status-badge">Loading...</div>
+            </div>
+            <div class="header-right">
+                <div class="status-badge" id="botStatus">
+                    <span class="status-dot"></span>
+                    <span id="repo-info">Loading...</span>
+                </div>
+                <!-- Auth-dependent buttons will be handled via script -->
+                <button class="btn btn-accent" id="btnBlast" onclick="triggerManualBlast()" style="display: none;">
+                    🚀 Blast Now
+                </button>
+                <button class="btn btn-ghost" onclick="logout()" id="btnLogout"
+                    style="display: none; margin-left: 10px; color: var(--text-muted); border: 1px solid rgba(255,255,255,0.05)">
+                    🚪 Logout
+                </button>
             </div>
         </header>
 
-        <!-- GitHub Token Input -->
-        <div class="auth-section" id="authSection">
+        <!-- GitHub Token Input (Auth Section) -->
+        <div class="auth-section" id="authSection"
+            style="padding: 32px; max-width: 600px; margin: 40px auto; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border);">
             <div class="auth-card">
-                <h3>🔐 GitHub Authentication</h3>
-                <p>Enter your GitHub Personal Access Token to manage the system:</p>
-                <input type="password" id="githubToken" placeholder="ghp_..." class="token-input">
-                <button onclick="authenticate()" class="btn btn-primary">Authenticate</button>
-                <small class="token-hint">
+                <h3 style="margin-bottom: 12px; font-size: 20px;">🔐 GitHub Authentication</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">Enter your GitHub Personal Access Token to
+                    manage the system via GitHub API:</p>
+                <input type="password" id="githubToken" placeholder="ghp_..." class="form-input"
+                    style="margin-bottom: 16px;">
+                <button onclick="authenticate()" class="btn btn-primary" style="width: 100%;">Authenticate</button>
+                <div style="margin-top: 16px; font-size: 13px; color: var(--text-muted);">
                     Create a token at:
-                    <a href="https://github.com/settings/tokens" target="_blank">GitHub Settings → Tokens</a>
-                </small>
+                    <a href="https://github.com/settings/tokens" target="_blank" style="color: var(--accent);">GitHub
+                        Settings → Tokens</a>
+                </div>
             </div>
         </div>
 
         <!-- Main Dashboard (hidden until auth) -->
         <main class="dashboard" id="dashboard" style="display: none;">
             <!-- Stats Cards -->
-            <section class="stats-grid">
-                <div class="stat-card" style="--i: 1">
-                    <div class="stat-icon" style="background: rgba(124, 77, 255, 0.1)">🔗</div>
+            <section class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">📨</div>
                     <div class="stat-info">
-                        <h3 class="stat-value" id="totalLinks">0</h3>
-                        <p class="stat-label">Total Links</p>
+                        <span class="stat-value" id="statPending">0</span>
+                        <span class="stat-label">Pending Links</span>
                     </div>
                 </div>
-                <div class="stat-card" style="--i: 2">
-                    <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1)">⏳</div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #f5576c, #ff4757)">💎</div>
                     <div class="stat-info">
-                        <h3 class="stat-value" id="pendingLinks">0</h3>
-                        <p class="stat-label">Pending</p>
+                        <span class="stat-value" id="statPriority">0</span>
+                        <span class="stat-label">VIP Pending Approval</span>
                     </div>
                 </div>
-                <div class="stat-card" style="--i: 3">
-                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1)">👥</div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">👥</div>
                     <div class="stat-info">
-                        <h3 class="stat-value" id="totalMembers">0</h3>
-                        <p class="stat-label">Members</p>
+                        <span class="stat-value" id="statMembers">0<small>/100</small></span>
+                        <span class="stat-label">Members</span>
                     </div>
                 </div>
-                <div class="stat-card" style="--i: 4">
-                    <div class="stat-icon" style="background: rgba(124, 77, 255, 0.1)">🎯</div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe)">👆</div>
                     <div class="stat-info">
-                        <h3 class="stat-value" id="todayClicks">0</h3>
-                        <p class="stat-label">Today's Clicks</p>
+                        <span class="stat-value" id="statClicks">0</span>
+                        <span class="stat-label">Today Clicks</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7)">📊</div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statClickRate">0%</span>
+                        <span class="stat-label">Click Rate</span>
                     </div>
                 </div>
             </section>
 
-            <!-- Quick Actions -->
-            <section class="actions">
-                <button onclick="showAddLinkModal()" class="btn btn-success">➕ Add Link</button>
-                <button onclick="triggerManualBlast()" class="btn btn-warning">🚀 Manual Blast</button>
-                <button onclick="refreshData()" class="btn btn-info">🔄 Refresh</button>
-                <button onclick="exportData()" class="btn btn-secondary">📥 Export Data</button>
-            </section>
-
-            <!-- Tabs -->
-            <section class="tabs">
-                <button class="tab-btn active" onclick="showTab('links')">📝 Links</button>
-                <button class="tab-btn" onclick="showTab('members')">👥 Members</button>
-                <button class="tab-btn" onclick="showTab('analytics')">📈 Analytics</button>
-                <button class="tab-btn" onclick="showTab('activity')">🔥 Activity</button>
-            </section>
+            <!-- Tab Navigation -->
+            <nav class="tab-nav">
+                <button class="tab-btn active" data-tab="links" onclick="switchTab('links')">🔗 Links</button>
+                <button class="tab-btn" data-tab="members" onclick="switchTab('members')">👥 Members</button>
+                <button class="tab-btn" data-tab="analytics" onclick="switchTab('analytics')">📈 Analytics</button>
+                <!-- Combined activity into analytics or keep separate? Original had 4 tabs. -->
+                <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ Settings</button>
+            </nav>
 
             <!-- Tab Content -->
             <div class="tab-content">
                 <!-- Links Tab -->
-                <div id="links-tab" class="tab-pane active">
+                <section class="tab-panel active" id="tab-links">
+                    <div class="panel-header">
+                        <h2>TikTok Links</h2>
+                        <div style="display:flex;gap:10px">
+                            <button class="btn btn-secondary" onclick="exportData()">📥 Export JSON</button>
+                            <button class="btn btn-primary" onclick="showAddLinkModal()">+ Add Link</button>
+                        </div>
+                    </div>
+
                     <div class="table-container">
-                        <table id="linksTable">
+                        <table class="data-table" id="linksTable">
                             <thead>
                                 <tr>
-                                    <th>Title</th>
+                                    <th>Name</th>
                                     <th>Status</th>
                                     <th>Clicks</th>
                                     <th>Created</th>
@@ -104,16 +130,21 @@
                                 </tr>
                             </thead>
                             <tbody id="linksTableBody">
-                                <!-- Links will be populated here -->
+                                <tr>
+                                    <td colspan="5" class="empty-state">Loading links...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </section>
 
                 <!-- Members Tab -->
-                <div id="members-tab" class="tab-pane">
+                <section class="tab-panel" id="tab-members">
+                    <div class="panel-header">
+                        <h2>Group Members</h2>
+                    </div>
                     <div class="table-container">
-                        <table id="membersTable">
+                        <table class="data-table" id="membersTable">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -124,31 +155,46 @@
                                 </tr>
                             </thead>
                             <tbody id="membersTableBody">
-                                <!-- Members will be populated here -->
+                                <tr>
+                                    <td colspan="5" class="empty-state">Loading members...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </section>
 
                 <!-- Analytics Tab -->
-                <div id="analytics-tab" class="tab-pane">
-                    <div class="chart-container">
-                        <canvas id="dailyChart"></canvas>
+                <section class="tab-panel" id="tab-analytics">
+                    <div class="panel-header">
+                        <h2>Analytics & Reports</h2>
                     </div>
-                    <div class="stats-summary">
-                        <h3>30-Day Summary</h3>
-                        <div id="analyticsSummary">
-                            <!-- Analytics summary will be populated here -->
+                    <div class="card">
+                        <h3>📈 Daily Click Stats (30 Days)</h3>
+                        <div class="chart-container" style="height: 300px; margin-top: 20px;">
+                            <canvas id="dailyChart"></canvas>
                         </div>
                     </div>
-                </div>
-
-                <!-- Activity Tab -->
-                <div id="activity-tab" class="tab-pane">
-                    <div class="activity-list" id="activityList">
-                        <!-- Today's activity will be populated here -->
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>🔥 Today's Activity</h3>
+                        <div class="activity-list" id="activityList">
+                            <!-- Activity will be here -->
+                        </div>
                     </div>
-                </div>
+                </section>
+
+                <!-- Settings Tab -->
+                <section class="tab-panel" id="tab-settings">
+                    <div class="panel-header">
+                        <h2>System Settings</h2>
+                    </div>
+                    <div class="card">
+                        <h3>ℹ️ GitHub Info</h3>
+                        <p>Repository: <strong id="repo-display">...</strong></p>
+                        <p>Authenticated as: <strong id="user-display">...</strong></p>
+                        <button class="btn btn-danger" onclick="logout()" style="margin-top: 20px;">🚪 Logout
+                            Session</button>
+                    </div>
+                </section>
             </div>
         </main>
 
@@ -186,7 +232,7 @@
         </div>
     </div>
 
-    <script src="frontend-github.js?v=2"></script>
+    <script src="frontend-github.js"></script>
     <script>
         let githubToken = localStorage.getItem('githubToken');
         let dailyChart = null;
@@ -225,10 +271,16 @@
                 });
 
                 if (response.ok) {
+                    const userData = await response.json();
                     githubToken = token;
                     localStorage.setItem('githubToken', token);
                     document.getElementById('authSection').style.display = 'none';
                     document.getElementById('dashboard').style.display = 'block';
+
+                    // Update user info in settings
+                    document.getElementById('user-display').textContent = userData.login;
+                    document.getElementById('repo-display').textContent = `${window.dashboard.getRepoOwner()}/${window.dashboard.getRepoName()}`;
+
                     await loadDashboard();
                 } else {
                     throw new Error('Invalid token');
@@ -244,6 +296,10 @@
         async function loadDashboard() {
             showLoading(true);
             try {
+                // Show dashboard buttons
+                document.getElementById('btnBlast').style.display = 'inline-flex';
+                document.getElementById('btnLogout').style.display = 'inline-flex';
+
                 await Promise.all([
                     updateStats(),
                     loadLinks(),
@@ -261,10 +317,17 @@
 
         async function updateStats() {
             const stats = await window.dashboard.getStats();
-            document.getElementById('totalLinks').textContent = stats.totalLinks;
-            document.getElementById('pendingLinks').textContent = stats.pendingLinks;
-            document.getElementById('totalMembers').textContent = stats.totalMembers;
-            document.getElementById('todayClicks').textContent = stats.todayClicks;
+            document.getElementById('statPending').textContent = stats.pendingLinks;
+            document.getElementById('statPriority').textContent = stats.todayBlasts || 0; // Show blasts in priority slot
+            document.getElementById('statMembers').innerHTML = `${stats.totalMembers}<small>/100</small>`;
+            document.getElementById('statClicks').textContent = stats.todayClicks;
+
+            // Calculate rate
+            const rate = stats.totalMembers > 0 ? Math.round((stats.todayClickers / stats.totalMembers) * 100) : 0;
+            document.getElementById('statClickRate').textContent = `${rate}%`;
+
+            // Update repo info in status badge
+            document.getElementById('repo-info').textContent = 'System Online';
         }
 
         async function loadLinks() {
@@ -368,18 +431,26 @@
             `).join('');
         }
 
-        function showTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-pane').forEach(tab => {
-                tab.classList.remove('active');
+        function switchTab(tabName) {
+            // Hide all panels
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.remove('active');
             });
+            // Remove active from all buttons
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
 
-            // Show selected tab
-            document.getElementById(`${tabName}-tab`).classList.add('active');
-            event.target.classList.add('active');
+            // Show selected panel
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            // Add active to button
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        }
+
+        function logout() {
+            if (!confirm('Logout from session?')) return;
+            localStorage.removeItem('githubToken');
+            window.location.reload();
         }
 
         function showAddLinkModal() {
