@@ -114,7 +114,7 @@ class GitHubDashboard {
   }
 
   async addLink(linkData, token) {
-    const data = await this.fetchData();
+    const data = await this.fetchData(token);
     const newLink = {
       id: Date.now(),
       ...linkData,
@@ -133,7 +133,7 @@ class GitHubDashboard {
   }
 
   async deleteLink(linkId, token) {
-    const data = await this.fetchData();
+    const data = await this.fetchData(token);
     data.links = data.links.filter(l => l.id !== parseInt(linkId));
     await this.updateData(data, token);
   }
