@@ -6,8 +6,11 @@ class GitHubDashboard {
   }
 
   getRepoOwner() {
-    // Extract from current URL or use config
-    return window.location.hostname === 'localhost' ? 'Kharrley9' : window.location.pathname.split('/')[1];
+    if (window.location.hostname === 'localhost') return 'Kharrley9';
+    if (window.location.hostname.endsWith('.github.io')) {
+      return window.location.hostname.split('.')[0];
+    }
+    return window.location.pathname.split('/')[1];
   }
 
   getRepoName() {
@@ -18,7 +21,7 @@ class GitHubDashboard {
     try {
       const response = await fetch(`${this.apiBase}/contents/${this.dataFile}`);
       if (!response.ok) throw new Error('Failed to fetch data');
-      
+
       const data = await response.json();
       const content = atob(data.content);
       return JSON.parse(content);
@@ -45,10 +48,10 @@ class GitHubDashboard {
     try {
       // Get current file info
       const currentFile = await fetch(`${this.apiBase}/contents/${this.dataFile}`).then(r => r.json());
-      
+
       const content = btoa(JSON.stringify(updatedData, null, 2));
       const message = 'Update dashboard data';
-      
+
       const response = await fetch(`${this.apiBase}/contents/${this.dataFile}`, {
         method: 'PUT',
         headers: {
@@ -74,7 +77,7 @@ class GitHubDashboard {
   async getStats() {
     const data = await this.fetchData();
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });
-    
+
     const todayClicks = data.clickTracking.filter(click => {
       const clickDate = new Date(click.clicked_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });
       return clickDate === today;
@@ -138,7 +141,7 @@ class GitHubDashboard {
   async getTodayClicks() {
     const data = await this.fetchData();
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });
-    
+
     return data.clickTracking
       .filter(click => {
         const clickDate = new Date(click.clicked_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });
@@ -160,7 +163,7 @@ class GitHubDashboard {
   async getDailyStats() {
     const data = await this.fetchData();
     const stats = {};
-    
+
     data.clickTracking.forEach(click => {
       const date = new Date(click.clicked_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });
       if (!stats[date]) {
@@ -174,7 +177,7 @@ class GitHubDashboard {
       stats[date].unique_clickers.add(click.member_telegram_id);
       stats[date].links_clicked.add(click.link_id);
     });
-    
+
     return Object.entries(stats)
       .map(([date, stat]) => ({
         date,
