@@ -25,7 +25,7 @@
             <div class="header-right">
                 <div class="status-badge" id="botStatus">
                     <span class="status-dot"></span>
-                    <span id="repo-info">Loading...</span>
+                    <span>System Online</span>
                 </div>
                 <!-- Auth-dependent buttons will be handled via script -->
                 <button class="btn btn-accent" id="btnBlast" onclick="triggerManualBlast()" style="display: none;">
@@ -114,8 +114,35 @@
                         <h2>TikTok Links</h2>
                         <div style="display:flex;gap:10px">
                             <button class="btn btn-secondary" onclick="exportData()">📥 Export JSON</button>
-                            <button class="btn btn-primary" onclick="showAddLinkModal()">+ Add Link</button>
+                            <button class="btn btn-primary" onclick="showAddLink()">+ Add Link</button>
                         </div>
+                    </div>
+
+                    <!-- Add Link Form (Original Style) -->
+                    <div class="form-card hidden" id="addLinkFormContainer"
+                        style="background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 24px;">
+                        <h3 style="margin-bottom: 16px;">Add New Link</h3>
+                        <form onsubmit="addLink(event)">
+                            <div class="form-group" style="margin-bottom: 12px;">
+                                <label style="display: block; margin-bottom: 6px; font-size: 14px;">Name :</label>
+                                <input type="text" id="linkTitle" placeholder="e.g. Ahmad, Siti..." class="form-input"
+                                    required>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 12px;">
+                                <label style="display: block; margin-bottom: 6px; font-size: 14px;">TikTok Link
+                                    :</label>
+                                <input type="url" id="linkUrl" placeholder="https://..." class="form-input" required>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-size: 14px;">Description
+                                    (Optional) :</label>
+                                <textarea id="linkDescription" rows="2" class="form-input"></textarea>
+                            </div>
+                            <div class="form-actions" style="display: flex; gap: 10px;">
+                                <button type="submit" class="btn btn-primary">Save Link</button>
+                                <button type="button" class="btn btn-ghost" onclick="hideAddLink()">Cancel</button>
+                            </div>
+                        </form>
                     </div>
 
                     <div class="table-container">
@@ -198,35 +225,10 @@
             </div>
         </main>
 
-        <!-- Add Link Modal -->
-        <div id="addLinkModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal('addLinkModal')">&times;</span>
-                <h2>➕ Add New Link</h2>
-                <form id="addLinkForm" onsubmit="addLink(event)">
-                    <div class="form-group">
-                        <label for="linkUrl">URL:</label>
-                        <input type="url" id="linkUrl" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="linkTitle">Title:</label>
-                        <input type="text" id="linkTitle" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="linkDescription">Description:</label>
-                        <textarea id="linkDescription" rows="3"></textarea>
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">Add Link</button>
-                        <button type="button" class="btn btn-secondary"
-                            onclick="closeModal('addLinkModal')">Cancel</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <!-- (Original Modal Removed) -->
 
         <!-- Loading Overlay -->
-        <div id="loadingOverlay" class="loading-overlay">
+        <div id="loadingOverlay" class="loading-overlay hidden">
             <div class="spinner"></div>
             <p>Loading...</p>
         </div>
@@ -453,12 +455,12 @@
             window.location.reload();
         }
 
-        function showAddLinkModal() {
-            document.getElementById('addLinkModal').style.display = 'block';
+        function showAddLink() {
+            document.getElementById('addLinkFormContainer').classList.remove('hidden');
         }
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
+        function hideAddLink() {
+            document.getElementById('addLinkFormContainer').classList.add('hidden');
         }
 
         async function addLink(event) {
@@ -474,8 +476,10 @@
             showLoading(true);
             try {
                 await window.dashboard.addLink(linkData, githubToken);
-                closeModal('addLinkModal');
-                document.getElementById('addLinkForm').reset();
+                hideAddLink();
+                document.getElementById('linkTitle').value = '';
+                document.getElementById('linkUrl').value = '';
+                document.getElementById('linkDescription').value = '';
                 await loadDashboard();
             } catch (error) {
                 alert('Failed to add link: ' + error.message);
