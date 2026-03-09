@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,13 +8,19 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
     <div class="container">
-        <header>
-            <h1>🎯 CutPrice TikTok Blasting System</h1>
-            <p class="subtitle">GitHub-Powered Dashboard</p>
-            <div class="github-info">
-                <span id="repo-info">Loading...</span>
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🎯</span>
+                    <div>
+                        <h1>CutPrice TikTok Blasting</h1>
+                        <p class="subtitle">GitHub-Powered Dashboard</p>
+                    </div>
+                </div>
+                <div id="repo-info" class="status-badge">Loading...</div>
             </div>
         </header>
 
@@ -25,7 +32,7 @@
                 <input type="password" id="githubToken" placeholder="ghp_..." class="token-input">
                 <button onclick="authenticate()" class="btn btn-primary">Authenticate</button>
                 <small class="token-hint">
-                    Create a token at: 
+                    Create a token at:
                     <a href="https://github.com/settings/tokens" target="_blank">GitHub Settings → Tokens</a>
                 </small>
             </div>
@@ -35,32 +42,32 @@
         <main class="dashboard" id="dashboard" style="display: none;">
             <!-- Stats Cards -->
             <section class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">📊</div>
-                    <div class="stat-content">
-                        <h3 id="totalLinks">0</h3>
-                        <p>Total Links</p>
+                <div class="stat-card" style="--i: 1">
+                    <div class="stat-icon" style="background: rgba(124, 77, 255, 0.1)">🔗</div>
+                    <div class="stat-info">
+                        <h3 class="stat-value" id="totalLinks">0</h3>
+                        <p class="stat-label">Total Links</p>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon">⏳</div>
-                    <div class="stat-content">
-                        <h3 id="pendingLinks">0</h3>
-                        <p>Pending</p>
+                <div class="stat-card" style="--i: 2">
+                    <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1)">⏳</div>
+                    <div class="stat-info">
+                        <h3 class="stat-value" id="pendingLinks">0</h3>
+                        <p class="stat-label">Pending</p>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon">👥</div>
-                    <div class="stat-content">
-                        <h3 id="totalMembers">0</h3>
-                        <p>Members</p>
+                <div class="stat-card" style="--i: 3">
+                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1)">👥</div>
+                    <div class="stat-info">
+                        <h3 class="stat-value" id="totalMembers">0</h3>
+                        <p class="stat-label">Members</p>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🎯</div>
-                    <div class="stat-content">
-                        <h3 id="todayClicks">0</h3>
-                        <p>Today's Clicks</p>
+                <div class="stat-card" style="--i: 4">
+                    <div class="stat-icon" style="background: rgba(124, 77, 255, 0.1)">🎯</div>
+                    <div class="stat-info">
+                        <h3 class="stat-value" id="todayClicks">0</h3>
+                        <p class="stat-label">Today's Clicks</p>
                     </div>
                 </div>
             </section>
@@ -165,7 +172,8 @@
                     </div>
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">Add Link</button>
-                        <button type="button" class="btn btn-secondary" onclick="closeModal('addLinkModal')">Cancel</button>
+                        <button type="button" class="btn btn-secondary"
+                            onclick="closeModal('addLinkModal')">Cancel</button>
                     </div>
                 </form>
             </div>
@@ -184,7 +192,7 @@
         let dailyChart = null;
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             if (githubToken) {
                 document.getElementById('githubToken').value = githubToken;
                 authenticate();
@@ -192,7 +200,7 @@
                 document.getElementById('authSection').style.display = 'block';
                 document.getElementById('dashboard').style.display = 'none';
             }
-            
+
             updateRepoInfo();
         });
 
@@ -334,7 +342,7 @@
             const summaryDiv = document.getElementById('analyticsSummary');
             const totalClicks = stats.reduce((sum, s) => sum + s.total_clicks, 0);
             const avgClicks = Math.round(totalClicks / stats.length);
-            
+
             summaryDiv.innerHTML = `
                 <p><strong>Total Clicks (30 days):</strong> ${totalClicks}</p>
                 <p><strong>Daily Average:</strong> ${avgClicks}</p>
@@ -345,7 +353,7 @@
         async function loadActivity() {
             const clicks = await window.dashboard.getTodayClicks();
             const activityList = document.getElementById('activityList');
-            
+
             if (clicks.length === 0) {
                 activityList.innerHTML = '<p>No activity today yet.</p>';
                 return;
@@ -384,7 +392,7 @@
 
         async function addLink(event) {
             event.preventDefault();
-            
+
             const linkData = {
                 url: document.getElementById('linkUrl').value,
                 title: document.getElementById('linkTitle').value,
@@ -460,4 +468,5 @@
         }, 30000);
     </script>
 </body>
+
 </html>
