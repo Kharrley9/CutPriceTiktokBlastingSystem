@@ -16,6 +16,7 @@
   "license": "ISC",
   "description": "Telegram Auto-Blast System for TikTok Cut Price Links",
   "dependencies": {
+    "@octokit/rest": "^22.0.1",
     "better-sqlite3": "^12.6.2",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",

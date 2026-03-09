@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CutPrice TikTok Blasting System - GitHub Edition</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 CutPrice TikTok Blasting System</h1>
+            <p class="subtitle">GitHub-Powered Dashboard</p>
+            <div class="github-info">
+                <span id="repo-info">Loading...</span>
+            </div>
+        </header>
+
+        <!-- GitHub Token Input -->
+        <div class="auth-section" id="authSection">
+            <div class="auth-card">
+                <h3>🔐 GitHub Authentication</h3>
+                <p>Enter your GitHub Personal Access Token to manage the system:</p>
+                <input type="password" id="githubToken" placeholder="ghp_..." class="token-input">
+                <button onclick="authenticate()" class="btn btn-primary">Authenticate</button>
+                <small class="token-hint">
+                    Create a token at: 
+                    <a href="https://github.com/settings/tokens" target="_blank">GitHub Settings → Tokens</a>
+                </small>
+            </div>
+        </div>
+
+        <!-- Main Dashboard (hidden until auth) -->
+        <main class="dashboard" id="dashboard" style="display: none;">
+            <!-- Stats Cards -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-content">
+                        <h3 id="totalLinks">0</h3>
+                        <p>Total Links</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-content">
+                        <h3 id="pendingLinks">0</h3>
+                        <p>Pending</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-content">
+                        <h3 id="totalMembers">0</h3>
+                        <p>Members</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-content">
+                        <h3 id="todayClicks">0</h3>
+                        <p>Today's Clicks</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Actions -->
+            <section class="actions">
+                <button onclick="showAddLinkModal()" class="btn btn-success">➕ Add Link</button>
+                <button onclick="triggerManualBlast()" class="btn btn-warning">🚀 Manual Blast</button>
+                <button onclick="refreshData()" class="btn btn-info">🔄 Refresh</button>
+                <button onclick="exportData()" class="btn btn-secondary">📥 Export Data</button>
+            </section>
+
+            <!-- Tabs -->
+            <section class="tabs">
+                <button class="tab-btn active" onclick="showTab('links')">📝 Links</button>
+                <button class="tab-btn" onclick="showTab('members')">👥 Members</button>
+                <button class="tab-btn" onclick="showTab('analytics')">📈 Analytics</button>
+                <button class="tab-btn" onclick="showTab('activity')">🔥 Activity</button>
+            </section>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Links Tab -->
+                <div id="links-tab" class="tab-pane active">
+                    <div class="table-container">
+                        <table id="linksTable">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Status</th>
+                                    <th>Clicks</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="linksTableBody">
+                                <!-- Links will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Members Tab -->
+                <div id="members-tab" class="tab-pane">
+                    <div class="table-container">
+                        <table id="membersTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Username</th>
+                                    <th>Total Clicks</th>
+                                    <th>Joined</th>
+                                    <th>Last Click</th>
+                                </tr>
+                            </thead>
+                            <tbody id="membersTableBody">
+                                <!-- Members will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Analytics Tab -->
+                <div id="analytics-tab" class="tab-pane">
+                    <div class="chart-container">
+                        <canvas id="dailyChart"></canvas>
+                    </div>
+                    <div class="stats-summary">
+                        <h3>30-Day Summary</h3>
+                        <div id="analyticsSummary">
+                            <!-- Analytics summary will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Tab -->
+                <div id="activity-tab" class="tab-pane">
+                    <div class="activity-list" id="activityList">
+                        <!-- Today's activity will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Add Link Modal -->
+        <div id="addLinkModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('addLinkModal')">&times;</span>
+                <h2>➕ Add New Link</h2>
+                <form id="addLinkForm" onsubmit="addLink(event)">
+                    <div class="form-group">
+                        <label for="linkUrl">URL:</label>
+                        <input type="url" id="linkUrl" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="linkTitle">Title:</label>
+                        <input type="text" id="linkTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="linkDescription">Description:</label>
+                        <textarea id="linkDescription" rows="3"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Add Link</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('addLinkModal')">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <script src="frontend-github.js"></script>
+    <script>
+        let githubToken = localStorage.getItem('githubToken');
+        let dailyChart = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            if (githubToken) {
+                document.getElementById('githubToken').value = githubToken;
+                authenticate();
+            } else {
+                document.getElementById('authSection').style.display = 'block';
+                document.getElementById('dashboard').style.display = 'none';
+            }
+            
+            updateRepoInfo();
+        });
+
+        function updateRepoInfo() {
+            const repoOwner = window.dashboard.getRepoOwner();
+            const repoName = window.dashboard.getRepoName();
+            document.getElementById('repo-info').textContent = `${repoOwner}/${repoName}`;
+        }
+
+        async function authenticate() {
+            const token = document.getElementById('githubToken').value;
+            if (!token) {
+                alert('Please enter your GitHub token');
+                return;
+            }
+
+            showLoading(true);
+            try {
+                // Test the token
+                const response = await fetch('https://api.github.com/user', {
+                    headers: { 'Authorization': `token ${token}` }
+                });
+
+                if (response.ok) {
+                    githubToken = token;
+                    localStorage.setItem('githubToken', token);
+                    document.getElementById('authSection').style.display = 'none';
+                    document.getElementById('dashboard').style.display = 'block';
+                    await loadDashboard();
+                } else {
+                    throw new Error('Invalid token');
+                }
+            } catch (error) {
+                alert('Authentication failed. Please check your token.');
+                console.error('Auth error:', error);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function loadDashboard() {
+            showLoading(true);
+            try {
+                await Promise.all([
+                    updateStats(),
+                    loadLinks(),
+                    loadMembers(),
+                    loadAnalytics(),
+                    loadActivity()
+                ]);
+            } catch (error) {
+                console.error('Dashboard load error:', error);
+                alert('Failed to load dashboard data');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function updateStats() {
+            const stats = await window.dashboard.getStats();
+            document.getElementById('totalLinks').textContent = stats.totalLinks;
+            document.getElementById('pendingLinks').textContent = stats.pendingLinks;
+            document.getElementById('totalMembers').textContent = stats.totalMembers;
+            document.getElementById('todayClicks').textContent = stats.todayClicks;
+        }
+
+        async function loadLinks() {
+            const links = await window.dashboard.getLinks();
+            const tbody = document.getElementById('linksTableBody');
+            tbody.innerHTML = '';
+
+            links.forEach(link => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${link.title || 'No title'}</td>
+                    <td><span class="status status-${link.status}">${link.status}</span></td>
+                    <td>${link.click_count || 0}</td>
+                    <td>${new Date(link.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button onclick="deleteLink(${link.id})" class="btn btn-sm btn-danger">🗑️</button>
+                    </td>
+                `;
+            });
+        }
+
+        async function loadMembers() {
+            const members = await window.dashboard.getMembers();
+            const tbody = document.getElementById('membersTableBody');
+            tbody.innerHTML = '';
+
+            members.forEach(member => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${member.first_name} ${member.last_name}</td>
+                    <td>@${member.username}</td>
+                    <td>${member.total_clicks}</td>
+                    <td>${new Date(member.joined_at).toLocaleDateString()}</td>
+                    <td>${member.last_click_at ? new Date(member.last_click_at).toLocaleDateString() : 'Never'}</td>
+                `;
+            });
+        }
+
+        async function loadAnalytics() {
+            const stats = await window.dashboard.getDailyStats();
+            const ctx = document.getElementById('dailyChart').getContext('2d');
+
+            if (dailyChart) {
+                dailyChart.destroy();
+            }
+
+            dailyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: stats.map(s => s.date).reverse(),
+                    datasets: [{
+                        label: 'Total Clicks',
+                        data: stats.map(s => s.total_clicks).reverse(),
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }, {
+                        label: 'Unique Clickers',
+                        data: stats.map(s => s.unique_clickers).reverse(),
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '30-Day Click Activity'
+                        }
+                    }
+                }
+            });
+
+            // Update summary
+            const summaryDiv = document.getElementById('analyticsSummary');
+            const totalClicks = stats.reduce((sum, s) => sum + s.total_clicks, 0);
+            const avgClicks = Math.round(totalClicks / stats.length);
+            
+            summaryDiv.innerHTML = `
+                <p><strong>Total Clicks (30 days):</strong> ${totalClicks}</p>
+                <p><strong>Daily Average:</strong> ${avgClicks}</p>
+                <p><strong>Most Active Day:</strong> ${stats[0]?.date || 'N/A'} (${stats[0]?.total_clicks || 0} clicks)</p>
+            `;
+        }
+
+        async function loadActivity() {
+            const clicks = await window.dashboard.getTodayClicks();
+            const activityList = document.getElementById('activityList');
+            
+            if (clicks.length === 0) {
+                activityList.innerHTML = '<p>No activity today yet.</p>';
+                return;
+            }
+
+            activityList.innerHTML = clicks.map(click => `
+                <div class="activity-item">
+                    <div class="activity-user">${click.first_name} (@${click.username})</div>
+                    <div class="activity-link">${click.title}</div>
+                    <div class="activity-time">${new Date(click.clicked_at).toLocaleTimeString()}</div>
+                </div>
+            `).join('');
+        }
+
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-pane').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showAddLinkModal() {
+            document.getElementById('addLinkModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        async function addLink(event) {
+            event.preventDefault();
+            
+            const linkData = {
+                url: document.getElementById('linkUrl').value,
+                title: document.getElementById('linkTitle').value,
+                description: document.getElementById('linkDescription').value,
+                priority_order: 0
+            };
+
+            showLoading(true);
+            try {
+                await window.dashboard.addLink(linkData, githubToken);
+                closeModal('addLinkModal');
+                document.getElementById('addLinkForm').reset();
+                await loadDashboard();
+            } catch (error) {
+                alert('Failed to add link: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function deleteLink(linkId) {
+            if (!confirm('Are you sure you want to delete this link?')) return;
+
+            showLoading(true);
+            try {
+                await window.dashboard.deleteLink(linkId, githubToken);
+                await loadDashboard();
+            } catch (error) {
+                alert('Failed to delete link: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function triggerManualBlast() {
+            if (!confirm('Trigger manual blast now?')) return;
+
+            showLoading(true);
+            try {
+                // This would trigger the GitHub Action
+                alert('Manual blast triggered! Check your Telegram group in a few minutes.');
+            } catch (error) {
+                alert('Failed to trigger blast: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function refreshData() {
+            await loadDashboard();
+        }
+
+        async function exportData() {
+            const data = await window.dashboard.fetchData();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cutprice-data-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            if (githubToken) {
+                loadDashboard();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
