@@ -1,4 +1,3 @@
-require('./error_logger');
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -6,12 +5,12 @@ const db = require('./database');
 const trackerRoutes = require('./tracker');
 const session = require('express-session');
 const { initBot, triggerBlast, checkConnection } = require('./bot');
-const { initScheduler, reschedule } = require('./scheduler');
+const { initScheduler, checkAndSendMissedReminder } = require('./scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ─── Session Configuration ────────────────────────────────────────
+// ─── Middleware Configuration ────────────────────────────────────────
 app.use(session({
     secret: 'cut-price-blast-premium-secret-2026',
     resave: false,
@@ -388,6 +387,15 @@ app.listen(PORT, () => {
     } catch (err) {
         console.error('❌ Scheduler init error:', err.message);
     }
+
+    // Check for missed reminders after server restart
+    setTimeout(() => {
+        try {
+            checkAndSendMissedReminder();
+        } catch (err) {
+            console.error('❌ Missed reminder check error:', err.message);
+        }
+    }, 5000); // Wait 5 seconds for everything to initialize
 
     console.log('\n✅ System ready!\n');
 });

@@ -10,7 +10,7 @@ let bot = null;
 let botInfo = null;
 let groupChatId = null;
 
-// ─── Handle Member Join (new + rejoin) ───────────────────────────────────────
+// ─── Member Management Functions ───────────────────────────────────────
 async function handleMemberJoin(chatId, member) {
     const memberId = String(member.id);
 
@@ -138,7 +138,9 @@ function initBot() {
                         `/setup - Create the private group\n` +
                         `/mygroup - Check/Auto-detect Group ID\n` +
                         `/cleargroup - Clear old Group ID\n` +
+                        `/instructions - Post group instructions\n` +
                         `/blast - Manually trigger link blast\n` +
+                        `/remindpending - Remind members with pending links to update\n` +
                         `/stats - View today's click stats\n` +
                         `/nonclickers - View who hasn't clicked today\n\n` +
                         `📋 <b>User Commands:</b>\n` +
@@ -284,13 +286,59 @@ function initBot() {
 
         // Validate URL
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            bot.sendMessage(chatId, '❌ Please provide a valid URL (must start with http:// or https://).\n\nUsage: `/submit <url> <name>`', { parse_mode: 'Markdown' });
+            bot.sendMessage(chatId, 
+                '❌ *Invalid URL Format*\n\n' +
+                '📝 *Correct Format Examples:*\n' +
+                '• `https://www.tiktok.com/@username`\n' +
+                '• `https://vm.tiktok.com/abc123`\n' +
+                '• `https://tiktok.com/@username`\n\n' +
+                '💡 *Usage:* `/submit <url> <name>`\n\n' +
+                '📱 *How to get your TikTok URL:*\n' +
+                '1. Open TikTok app → Profile → Share Profile\n' +
+                '2. Copy the link and paste here',
+                { parse_mode: 'Markdown' }
+            );
+            return;
+        }
+
+        // Check if name is provided
+        if (!customName || customName.trim().length === 0) {
+            bot.sendMessage(chatId,
+                '❌ *Name Required*\n\n' +
+                'Please include your name after the URL.\n\n' +
+                '💡 *Usage:* `/submit <url> <name>`\n\n' +
+                '📝 *Examples:*\n' +
+                '• `/submit https://tiktok.com/@johndoe John Doe`\n' +
+                '• `/submit https://vm.tiktok.com/abc123 Sarah`\n' +
+                '• `/submit https://www.tiktok.com/@username Your Name`',
+                { parse_mode: 'Markdown' }
+            );
             return;
         }
 
         const submitterName = msg.from.username || msg.from.first_name || 'User';
         const submitterId = String(msg.from.id);
         const finalTitle = customName || submitterName;
+
+        // Check time restriction (3 PM - 11:59 PM only for regular users, admins can submit 24 hours)
+        if (!isAdmin(userId)) {
+            const currentTime = new Date();
+            const malaysiaTime = new Date(currentTime.toLocaleString("en-US", {timeZone: "Asia/Kuala_Lumpur"}));
+            const malaysiaHour = malaysiaTime.getHours();
+            
+            // Allow submissions from 15:00 (3 PM) to 23:59 (11:59 PM) for regular users
+            if (malaysiaHour < 15 || malaysiaHour > 23) { // Before 3 PM (15:00) or after 11:59 PM (23:59)
+                bot.sendMessage(chatId,
+                    `⏰ *Submission Time Restricted*\n\n` +
+                    `📅 *Allowed Hours:* 3:00 PM - 11:59 PM (Malaysia Time)\n` +
+                    `🕐 *Current Time:* ${malaysiaTime.toLocaleTimeString('en-US', { timeZone: 'Asia/Kuala_Lumpur' })}\n\n` +
+                    `Please submit your link during the allowed hours.\n\n` +
+                    `📝 *Come back between 3:00 PM and 11:59 PM to submit your cut price link!*`,
+                    { parse_mode: 'Markdown' }
+                );
+                return;
+            }
+        }
 
         try {
             // Check if user already has a pending link
@@ -410,6 +458,136 @@ function initBot() {
             console.log(`⚙️ Admin ${userId} cleared group ID`);
         } catch (err) {
             bot.sendMessage(chatId, `❌ Error clearing group ID: ${err.message}`);
+        }
+    });
+
+    // ── /instructions command (Admin only) ──
+    bot.onText(/\/instructions/, async (msg) => {
+        const chatId = msg.chat.id;
+        const userId = String(msg.from.id);
+
+        if (!isAdmin(userId)) {
+            bot.sendMessage(chatId, '❌ Admin only command.');
+            return;
+        }
+
+        const instructionsMessage = `🎯 Welcome to Cut Price TikTok Group!\n\n` +
+            `📝 How to Submit Your TikTok Link:\n\n` +
+            `⏰ Member Submission Hours:\n` +
+            `3:00 PM - 11:59 PM (Malaysia Time)\n\n` +
+            `Step 1: Submit to Bot\n` +
+            `Send to @EzCutPriceBot: /submit <your_tiktok_url> <your_name>\n\n` +
+            `Example:\n` +
+            `/submit https://www.tiktok.com/@johndoe John Doe\n\n` +
+            `📋 Available Commands:\n` +
+            `/start - Main menu\n` +
+            `/submit <url> <name> - Submit your TikTok link\n` +
+            `/mylink - Check your link status\n` +
+            `/cutqueue - Jump to front (paid)\n` +
+            `/myid - Get your Telegram ID\n\n` +
+            `⚠️ Important Rules:\n` +
+            `✅ Submit your REAL TikTok cut price URL\n` +
+            `✅ Use your REAL name\n` +
+            `✅ Click other members' links daily\n` +
+            `✅ Be respectful and professional\n\n` +
+            `❌ Don't submit fake URLs\n` +
+            `❌ Don't use inappropriate names\n` +
+            `❌ Don't spam multiple links\n\n` +
+            `🕐 Daily Schedule:\n` +
+            `• Blast Time: 10:00 PM (Malaysia Time)\n` +
+            `• Link Duration: 24 hours\n` +
+            `• Activity Check: Daily\n\n` +
+            `🆘 Need Help?\n` +
+            `Contact Admin: @Kharrley\n` +
+            `Send your User ID (use /myid to get it)\n\n` +
+            `🎯 Tips for Success:\n` +
+            `1. Click 2+ links every day to stay active\n` +
+            `2. Make sure you stay up to date on group updates\n` +
+            `3. Follow the instructions given\n\n` +
+            `🚀 Ready? Submit your first link now!\n\n` +
+            `Remember: Active participation = Better results for everyone! 🎯`;
+
+        try {
+            if (msg.chat.type === 'private') {
+                bot.sendMessage(chatId, '📍 Note: Send this command in your group to post instructions there.');
+            } else {
+                await bot.sendMessage(chatId, instructionsMessage);
+                bot.sendMessage(chatId, '✅ Instructions posted successfully! You can pin this message for all members to see.');
+            }
+        } catch (err) {
+            bot.sendMessage(chatId, `❌ Error posting instructions: ${err.message}`);
+        }
+    });
+
+    // ── /remindpending command (Admin only) ──
+    bot.onText(/\/remindpending/, async (msg) => {
+        const chatId = msg.chat.id;
+        const userId = String(msg.from.id);
+
+        if (!isAdmin(userId)) {
+            bot.sendMessage(chatId, '❌ Admin only command.');
+            return;
+        }
+
+        try {
+            // Get all pending links
+            const pendingLinks = db.getPendingLinks();
+            
+            if (pendingLinks.length === 0) {
+                bot.sendMessage(chatId, '✅ No pending links found. All links have been blasted!');
+                return;
+            }
+
+            // Create reminder message
+            let reminderMessage = `🔔 REMINDER: Update Your Pending Links\n\n` +
+                `Found ${pendingLinks.length} members with pending links that need to be updated:\n\n`;
+
+            // List members with pending links
+            pendingLinks.forEach((link, index) => {
+                const createdDate = new Date(link.created_at);
+                const daysPending = Math.floor((new Date() - createdDate) / (1000 * 60 * 60 * 24));
+                
+                reminderMessage += `${index + 1}. ${link.title}\n` +
+                    `📅 Submitted: ${daysPending} day(s) ago\n` +
+                    `🔗 Link: ${link.url}\n\n`;
+            });
+
+            reminderMessage += `📝 How to Update Your Link:\n` +
+                `Send to @EzCutPriceBot:\n` +
+                `/submit <new_tiktok_url> <your_name>\n\n` +
+                `⏰ Submission Hours: 3:00 PM - 11:59 PM (Malaysia Time)\n\n` +
+                `❗ Important: Please update your links to ensure they remain active and relevant!`;
+
+            // Send reminder to group
+            if (msg.chat.type === 'private') {
+                bot.sendMessage(chatId, '📍 Note: Send this command in your group to remind members there.');
+            } else {
+                await bot.sendMessage(chatId, reminderMessage);
+                bot.sendMessage(chatId, `✅ Reminder sent to ${pendingLinks.length} members with pending links!`);
+            }
+
+            // Also send individual reminders to each member
+            for (const link of pendingLinks) {
+                try {
+                    const individualReminder = `🔔 Personal Reminder: Update Your Link\n\n` +
+                        `Hi ${link.title}! You have a pending link that needs to be updated:\n\n` +
+                        `🔗 Current Link: ${link.url}\n` +
+                        `📅 Submitted: ${new Date(link.created_at).toLocaleDateString()}\n\n` +
+                        `📝 To Update: Send me: /submit <new_tiktok_url> <your_name>\n\n` +
+                        `⏰ Submission Hours: 3:00 PM - 11:59 PM (Malaysia Time)\n\n` +
+                        `❗ Please update your link to keep it active in the system!`;
+
+                    await bot.sendMessage(link.submitted_by_id, individualReminder);
+                    console.log(`📩 Sent reminder to ${link.title} (${link.submitted_by_id})`);
+                } catch (err) {
+                    console.error(`❌ Failed to send reminder to ${link.submitted_by_id}:`, err.message);
+                }
+            }
+
+            console.log(`🔔 Admin ${userId} sent reminders to ${pendingLinks.length} members with pending links`);
+
+        } catch (err) {
+            bot.sendMessage(chatId, `❌ Error sending reminders: ${err.message}`);
         }
     });
 
@@ -644,6 +822,8 @@ async function setBotCommands(userId) {
                 { command: 'setup', description: 'Configure group instructions' },
                 { command: 'mygroup', description: 'Check/Auto-detect Group ID' },
                 { command: 'cleargroup', description: 'Clear old Group ID' },
+                { command: 'instructions', description: 'Post group instructions' },
+                { command: 'remindpending', description: 'Remind pending link updates' },
                 { command: 'myid', description: 'Check my ID' }
             ], { scope: { type: 'chat', chat_id: chatIdInt } });
             console.log(`👑 Admin menu set for ${userId}`);
@@ -804,4 +984,92 @@ async function notifyUser(userId, message) {
     }
 }
 
-module.exports = { initBot, getBot, getGroupChatId, triggerBlast, isAdmin, notifyUser, checkConnection };
+// ── Auto Reminder Function ──
+async function sendAutoReminder() {
+    try {
+        // Get all pending links
+        const pendingLinks = db.getPendingLinks();
+        
+        if (pendingLinks.length === 0) {
+            console.log('✅ No pending links found for auto reminder.');
+            return { success: true, message: 'No pending links found.' };
+        }
+
+        // Get group chat ID from settings
+        const groupChatId = db.getSetting('group_chat_id');
+        
+        if (!groupChatId) {
+            console.log('❌ No group chat ID found for auto reminder.');
+            return { success: false, message: 'No group chat ID configured.' };
+        }
+
+        // Create reminder message
+        let reminderMessage = `🔔 AUTO REMINDER: Update Your Pending Links\n\n` +
+            `⏰ Submission hours are NOW OPEN (3:00 PM - 11:59 PM)\n\n` +
+            `Found ${pendingLinks.length} members with pending links that need to be updated:\n\n`;
+
+        // List members with pending links
+        pendingLinks.forEach((link, index) => {
+            const createdDate = new Date(link.created_at);
+            const daysPending = Math.floor((new Date() - createdDate) / (1000 * 60 * 60 * 24));
+            
+            reminderMessage += `${index + 1}. ${link.title}\n` +
+                `📅 Submitted: ${daysPending} day(s) ago\n` +
+                `🔗 Link: ${link.url}\n\n`;
+        });
+
+        reminderMessage += `📝 How to Update Your Link:\n` +
+            `Send to @EzCutPriceBot:\n` +
+            `/submit <new_tiktok_url> <your_name>\n\n` +
+            `⏰ Submission Hours: 3:00 PM - 11:59 PM (Malaysia Time)\n\n` +
+            `❗ Important: Please update your links to ensure they remain active and relevant!\n\n` +
+            `🤖 This is an automated reminder sent at 3:00 PM daily.`;
+
+        // Send reminder to group
+        await bot.sendMessage(groupChatId, reminderMessage);
+        
+        // Also send individual reminders to each member
+        let individualRemindersSent = 0;
+        for (const link of pendingLinks) {
+            try {
+                const individualReminder = `🔔 Personal Reminder: Update Your Link\n\n` +
+                    `Hi ${link.title}! You have a pending link that needs to be updated:\n\n` +
+                    `🔗 Current Link: ${link.url}\n` +
+                    `📅 Submitted: ${new Date(link.created_at).toLocaleDateString()}\n\n` +
+                    `📝 To Update: Send me: /submit <new_tiktok_url> <your_name>\n\n` +
+                    `⏰ Submission Hours: 3:00 PM - 11:59 PM (Malaysia Time)\n\n` +
+                    `❗ Please update your link to keep it active in the system!\n\n` +
+                    `🤖 This is an automated reminder sent at 3:00 PM daily.`;
+
+                await bot.sendMessage(link.submitted_by_id, individualReminder);
+                console.log(`📩 Sent auto reminder to ${link.title} (${link.submitted_by_id})`);
+                individualRemindersSent++;
+            } catch (err) {
+                console.error(`❌ Failed to send auto reminder to ${link.submitted_by_id}:`, err.message);
+            }
+        }
+
+        console.log(`🔔 Auto reminder sent to group and ${individualRemindersSent}/${pendingLinks.length} members`);
+        return { 
+            success: true, 
+            message: `Auto reminder sent to ${pendingLinks.length} members`,
+            groupReminderSent: true,
+            individualRemindersSent: individualRemindersSent
+        };
+
+    } catch (err) {
+        console.error('❌ Error sending auto reminder:', err);
+        return { success: false, message: err.message };
+    }
+}
+
+module.exports = { 
+    initBot, 
+    getBot, 
+    getGroupChatId, 
+    triggerBlast, 
+    isAdmin, 
+    notifyUser, 
+    checkConnection, 
+    sendAutoReminder 
+};
