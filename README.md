@@ -2,7 +2,7 @@
 
 <div align="center">
 
-## 🎯
+<img src="assets/logo.png" alt="Logo" width="120" height="130">
 
 **A professional, automated Telegram blasting system designed for TikTok "Cut Price" link distribution**
 
