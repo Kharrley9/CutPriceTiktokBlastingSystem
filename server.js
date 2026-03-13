@@ -1,10 +1,11 @@
+require('./error_logger');
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const db = require('./database');
 const trackerRoutes = require('./tracker');
 const session = require('express-session');
-const { initBot, triggerBlast } = require('./bot');
+const { initBot, triggerBlast, checkConnection } = require('./bot');
 const { initScheduler, reschedule } = require('./scheduler');
 
 const app = express();
@@ -287,16 +288,19 @@ app.get('/api/blast/today', (req, res) => {
     }
 });
 
-// ─── API: Settings ───────────────────────────────────────────────
-app.get('/api/settings', (req, res) => {
+app.get('/api/settings', async (req, res) => {
     try {
+        const groupId = db.getSetting('group_chat_id');
+        const isConnected = groupId ? await checkConnection(groupId) : false;
+
         const settings = {
             blast_time: process.env.BLAST_TIME || '09:00',
             max_members: parseInt(process.env.MAX_MEMBERS) || 100,
             links_per_blast: parseInt(process.env.LINKS_PER_BLAST) || 10,
             public_url: process.env.PUBLIC_URL || 'http://localhost:3000',
             invite_link: db.getSetting('invite_link') || 'Not generated yet',
-            group_id: db.getSetting('group_chat_id') || 'Not configured'
+            group_id: groupId || 'Not configured',
+            is_connected: isConnected
         };
         res.json({ success: true, data: settings });
     } catch (err) {
@@ -304,13 +308,25 @@ app.get('/api/settings', (req, res) => {
     }
 });
 
+app.post('/api/settings/test-connection', async (req, res) => {
+    try {
+        const { group_id } = req.body;
+        if (!group_id) return res.status(400).json({ success: false, error: 'Group ID is required' });
+
+        const isConnected = await checkConnection(group_id);
+        res.json({ success: true, is_connected: isConnected });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.post('/api/settings', (req, res) => {
     try {
-        const { blast_time, links_per_blast, max_members } = req.body;
+        const { blast_time, links_per_blast, max_members, group_id } = req.body;
         const fs = require('fs');
         const envPath = require('path').join(__dirname, '.env');
 
-        if (!blast_time && !links_per_blast && !max_members) {
+        if (!blast_time && !links_per_blast && !max_members && !group_id) {
             return res.status(400).json({ success: false, error: 'No settings provided' });
         }
 
@@ -321,6 +337,10 @@ app.post('/api/settings', (req, res) => {
         }
         if (links_per_blast) process.env.LINKS_PER_BLAST = String(links_per_blast);
         if (max_members) process.env.MAX_MEMBERS = String(max_members);
+        if (group_id) {
+            process.env.GROUP_CHAT_ID = String(group_id);
+            db.setSetting('group_chat_id', String(group_id));
+        }
 
         // Persist to .env file
         let envContent = fs.readFileSync(envPath, 'utf8');
@@ -333,6 +353,13 @@ app.post('/api/settings', (req, res) => {
         }
         if (max_members) {
             envContent = envContent.replace(/^MAX_MEMBERS=.*/m, `MAX_MEMBERS=${max_members}`);
+        }
+        if (group_id) {
+            if (envContent.includes('GROUP_CHAT_ID=')) {
+                envContent = envContent.replace(/^GROUP_CHAT_ID=.*/m, `GROUP_CHAT_ID=${group_id}`);
+            } else {
+                envContent += `\nGROUP_CHAT_ID=${group_id}`;
+            }
         }
 
         fs.writeFileSync(envPath, envContent, 'utf8');

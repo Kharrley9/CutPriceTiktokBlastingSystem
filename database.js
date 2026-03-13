@@ -8,12 +8,18 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-const DB_PATH = path.join(dataDir, 'cutprice.db');
-const db = new Database(DB_PATH);
-
-// Enable WAL mode for better performance
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+let db;
+try {
+    const DB_PATH = path.join(dataDir, 'cutprice.db');
+    db = new Database(DB_PATH);
+    
+    // Enable WAL mode for better performance
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
+} catch (err) {
+    console.error('FAILED TO INITIALIZE DATABASE:', err);
+    throw err;
+}
 
 // ─── Create Tables ───────────────────────────────────────────────
 db.exec(`

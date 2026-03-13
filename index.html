@@ -328,7 +328,18 @@
           </div>
           <div class="setting-item">
             <span class="setting-label">Group ID</span>
-            <span class="setting-value mono" id="settGroupId">—</span>
+            <div style="display:flex; flex-direction:column; gap:8px; width:100%">
+              <div style="display:flex; gap:8px; align-items:center">
+                <input type="text" id="settGroupId" class="form-input setting-input mono"
+                  placeholder="e.g. -100123456789" style="flex:1">
+                <button class="btn btn-small btn-ghost" onclick="testConnection()" id="btnTestConn">🔄 Test</button>
+              </div>
+              <div id="connStatus" class="status-badge status-disconnected"
+                style="align-self: flex-start; margin-top: 4px; padding: 4px 10px; font-size: 11px;">
+                <span class="status-dot"></span>
+                <span class="status-text">Disconnected</span>
+              </div>
+            </div>
           </div>
           <div class="setting-item">
             <span class="setting-label">Invite Link</span>

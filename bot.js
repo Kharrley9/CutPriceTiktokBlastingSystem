@@ -55,8 +55,13 @@ function initBot() {
         }
     });
 
-    // Load saved group chat ID
+    // Load saved group chat ID (Database first, then .env fallback)
     groupChatId = db.getSetting('group_chat_id');
+    if (!groupChatId && process.env.GROUP_CHAT_ID) {
+        groupChatId = process.env.GROUP_CHAT_ID;
+        db.setSetting('group_chat_id', groupChatId);
+        console.log(`📡 Group ID initialized from .env: ${groupChatId}`);
+    }
 
     // Global Message Logger
     bot.on('message', (msg) => {
@@ -131,6 +136,8 @@ function initBot() {
                         `👑 <b>Admin Commands:</b>\n` +
                         `/submit &lt;url&gt; &lt;name&gt; - Submit/Update your TikTok link with a name\n` +
                         `/setup - Create the private group\n` +
+                        `/mygroup - Check/Auto-detect Group ID\n` +
+                        `/cleargroup - Clear old Group ID\n` +
                         `/blast - Manually trigger link blast\n` +
                         `/stats - View today's click stats\n` +
                         `/nonclickers - View who hasn't clicked today\n\n` +
@@ -345,6 +352,65 @@ function initBot() {
             `The bot will then configure the group automatically.`,
             { parse_mode: 'Markdown' }
         );
+    });
+
+    // ── /mygroup command (Admin only) ──
+    bot.onText(/\/mygroup/, async (msg) => {
+        const chatId = msg.chat.id;
+        const userId = String(msg.from.id);
+
+        if (!isAdmin(userId)) {
+            bot.sendMessage(chatId, '❌ Admin only command.');
+            return;
+        }
+
+        let detectedGroupId = null;
+        let autoSet = false;
+
+        // If command is sent in a group (not private chat), auto-detect and set the group ID
+        if (msg.chat.type !== 'private') {
+            detectedGroupId = String(chatId);
+            groupChatId = detectedGroupId;
+            db.setSetting('group_chat_id', groupChatId);
+            autoSet = true;
+            console.log(`⚙️ Admin ${userId} auto-detected and set Group ID to: ${groupChatId}`);
+        }
+
+        const currentId = getGroupChatId();
+        const inviteLink = db.getSetting('invite_link') || 'Not generated yet (run /register in group)';
+
+        let message = `📋 *Current Group Configuration*\n\n` +
+                     `🆔 Group ID: \`${currentId || 'Not set'}\`\n` +
+                     `🔗 Invite Link: ${inviteLink}`;
+
+        if (autoSet) {
+            message += `\n\n✅ *Auto-detected this group and set it as the blast target!*`;
+        } else if (msg.chat.type === 'private') {
+            message += `\n\n💡 *Tip:* Send this command in your Telegram group to auto-detect the Group ID!` +
+                      `\n\n🔄 *To clear old group ID:* Send /cleargroup`;
+        }
+
+        bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+    });
+
+    // ── /cleargroup command (Admin only) ──
+    bot.onText(/\/cleargroup/, async (msg) => {
+        const chatId = msg.chat.id;
+        const userId = String(msg.from.id);
+
+        if (!isAdmin(userId)) {
+            bot.sendMessage(chatId, '❌ Admin only command.');
+            return;
+        }
+
+        try {
+            db.setSetting('group_chat_id', '');
+            groupChatId = null;
+            bot.sendMessage(chatId, '✅ *Group ID Cleared!*\n\nOld group ID has been removed. Send /mygroup in your new group to auto-detect the new ID.', { parse_mode: 'Markdown' });
+            console.log(`⚙️ Admin ${userId} cleared group ID`);
+        } catch (err) {
+            bot.sendMessage(chatId, `❌ Error clearing group ID: ${err.message}`);
+        }
     });
 
     // ── /register command (in group, Admin only) ──
@@ -575,7 +641,9 @@ async function setBotCommands(userId) {
                 { command: 'blast', description: 'Trigger link blast' },
                 { command: 'stats', description: 'View click stats' },
                 { command: 'nonclickers', description: 'View non-clickers today' },
-                { command: 'setup', description: 'Configure group' },
+                { command: 'setup', description: 'Configure group instructions' },
+                { command: 'mygroup', description: 'Check/Auto-detect Group ID' },
+                { command: 'cleargroup', description: 'Clear old Group ID' },
                 { command: 'myid', description: 'Check my ID' }
             ], { scope: { type: 'chat', chat_id: chatIdInt } });
             console.log(`👑 Admin menu set for ${userId}`);
@@ -602,6 +670,12 @@ async function triggerBlast() {
 
     if (!targetGroupId) {
         return '❌ No group registered. Use /setup and /register first.';
+    }
+
+    // Check connection before blasting
+    const isConnected = await checkConnection(targetGroupId);
+    if (!isConnected) {
+        return '❌ Cannot connect to Telegram Group. Please check if the Group ID is correct and the bot is an admin in that group.';
     }
 
     const linksPerBlast = parseInt(process.env.LINKS_PER_BLAST) || 10;
@@ -708,6 +782,17 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function checkConnection(chatId) {
+    if (!bot || !chatId) return false;
+    try {
+        await bot.getChat(chatId);
+        return true;
+    } catch (err) {
+        console.error(`❌ Connection check failed for group ${chatId}:`, err.message);
+        return false;
+    }
+}
+
 async function notifyUser(userId, message) {
     if (!bot) return;
     try {
@@ -719,4 +804,4 @@ async function notifyUser(userId, message) {
     }
 }
 
-module.exports = { initBot, getBot, getGroupChatId, triggerBlast, isAdmin, notifyUser };
+module.exports = { initBot, getBot, getGroupChatId, triggerBlast, isAdmin, notifyUser, checkConnection };

@@ -1,0 +1,9 @@
+# Phusion Passenger configuration for cPanel Node.js Selector
+PassengerEnabled on
+PassengerAppType node
+PassengerStartupFile server.js
+PassengerAppLogFile passenger.log
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ server.js [QSA,L]

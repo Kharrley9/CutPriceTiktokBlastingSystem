@@ -33,10 +33,7 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html dist/
-          cp index-github.html dist/
-          cp frontend-github.js dist/
           cp style.css dist/
-          cp data.json dist/ || true
           cp -r assets dist/ || true
           
       - name: Setup Pages

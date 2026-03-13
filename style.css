@@ -28,10 +28,6 @@
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.hidden {
-  display: none !important;
-}
-
 /* ─── Reset & Base ────────────────────────────────────────────── */
 *,
 *::before,
@@ -123,17 +119,27 @@ body::before {
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
-  background: rgba(67, 233, 123, 0.1);
-  border: 1px solid rgba(67, 233, 123, 0.2);
   border-radius: 20px;
   font-size: 13px;
+  transition: var(--transition);
+}
+
+.status-connected {
+  background: rgba(67, 233, 123, 0.1);
+  border: 1px solid rgba(67, 233, 123, 0.2);
   color: var(--success);
+}
+
+.status-disconnected {
+  background: rgba(245, 87, 108, 0.1);
+  border: 1px solid rgba(245, 87, 108, 0.2);
+  color: var(--danger);
 }
 
 .status-dot {
   width: 8px;
   height: 8px;
-  background: var(--success);
+  background: currentColor;
   border-radius: 50%;
   animation: pulse 2s ease infinite;
 }
@@ -143,12 +149,12 @@ body::before {
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(67, 233, 123, 0.4);
+    box-shadow: 0 0 0 0 currentColor;
   }
 
   50% {
     opacity: 0.7;
-    box-shadow: 0 0 0 6px rgba(67, 233, 123, 0);
+    box-shadow: 0 0 0 6px transparent;
   }
 }
 

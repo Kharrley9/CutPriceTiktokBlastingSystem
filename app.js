@@ -477,13 +477,13 @@ async function loadSettings() {
 
     const s = result.data;
     document.getElementById('settGroupStatus').textContent = s.group_id !== 'Not configured' ? '✅ Configured' : '❌ Not configured';
-    document.getElementById('settGroupId').textContent = s.group_id;
     document.getElementById('settBlastTime').value = s.blast_time;
     document.getElementById('settLinksPerBlast').value = s.links_per_blast;
     document.getElementById('settMaxMembers').value = s.max_members;
+    document.getElementById('settGroupId').value = s.group_id;
     document.getElementById('settPublicUrl').textContent = s.public_url;
 
-
+    updateConnStatus(s.is_connected);
 
     const linkEl = document.getElementById('settInviteLink');
     linkEl.textContent = s.invite_link;
@@ -492,12 +492,61 @@ async function loadSettings() {
     }
 }
 
+function updateConnStatus(isConnected) {
+    const el = document.getElementById('connStatus');
+    const text = el.querySelector('.status-text');
+
+    if (isConnected) {
+        el.classList.remove('status-disconnected');
+        el.classList.add('status-connected');
+        text.textContent = 'Connected';
+    } else {
+        el.classList.remove('status-connected');
+        el.classList.add('status-disconnected');
+        text.textContent = 'Disconnected';
+    }
+}
+
+async function testConnection() {
+    const groupId = document.getElementById('settGroupId').value.trim();
+    if (!groupId) {
+        showToast('Please enter a Group ID first', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btnTestConn');
+    btn.disabled = true;
+    btn.textContent = '⏳ ...';
+
+    const result = await api('/settings/test-connection', {
+        method: 'POST',
+        body: { group_id: groupId }
+    });
+
+    btn.disabled = false;
+    btn.textContent = '🔄 Test';
+
+    if (result.success) {
+        updateConnStatus(result.is_connected);
+        if (result.is_connected) {
+            showToast('✅ Connection Successful!', 'success');
+        } else {
+            showToast('❌ Connection Failed. Check ID & Bot Admin status.', 'error');
+        }
+    } else {
+        showToast(`Error: ${result.error}`, 'error');
+    }
+}
+
+
+
 
 
 async function saveBlastSettings() {
     const blast_time = document.getElementById('settBlastTime').value;
     const links_per_blast = parseInt(document.getElementById('settLinksPerBlast').value);
     const max_members = parseInt(document.getElementById('settMaxMembers').value);
+    const group_id = document.getElementById('settGroupId').value.trim();
 
     if (!blast_time) { showToast('Please enter a valid blast time', 'error'); return; }
     if (!links_per_blast || links_per_blast < 1) { showToast('Links per blast must be at least 1', 'error'); return; }
@@ -505,7 +554,7 @@ async function saveBlastSettings() {
 
     const result = await api('/settings', {
         method: 'POST',
-        body: { blast_time, links_per_blast, max_members }
+        body: { blast_time, links_per_blast, max_members, group_id }
     });
 
     if (result.success) {
